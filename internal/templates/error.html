@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error {{.StatusCode}} - File Server</title>
+
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+        }
+    </script>
+    <style>
+        html {
+            overflow-y: scroll;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #000000;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --border-color: #333333;
+            --btn-bg: #ffffff;
+            --btn-text: #000000;
+        }
+
+        :root.light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #ffffff;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border-color: #cccccc;
+            --btn-bg: #000000;
+            --btn-text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, input, button, select, textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.5;
+            padding: 1rem;
+        }
+
+        .error-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 2rem 1.5rem;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .error-code {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--text-primary);
+            letter-spacing: -0.05em;
+        }
+
+        .error-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .error-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            max-width: 360px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 0;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            cursor: pointer;
+            border: 1px solid var(--btn-bg);
+            transition: all 0.2s ease;
+            text-decoration: none;
+            margin-top: 0.5rem;
+        }
+
+        .btn:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+
+        /* Mobile responsive styles */
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+            .error-card {
+                padding: 2rem 1.5rem;
+                gap: 1.25rem;
+            }
+            .error-code {
+                font-size: 3.5rem;
+            }
+            .error-title {
+                font-size: 1.125rem;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="error-code">{{.StatusCode}}</div>
+        <h2 class="error-title">{{.Message}}</h2>
+        <p class="error-desc">{{.Detail}}</p>
+        <a href="/" class="btn">
+            Return to Safety
+        </a>
+    </div>
+</body>
+</html>

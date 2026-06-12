@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - File Server</title>
+
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+        }
+    </script>
+    <style>
+        html {
+            overflow-y: scroll;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #000000;
+            --bg-tertiary: #111111;
+            --accent-primary: #ffffff;
+            --accent-gradient: none;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --text-muted: #666666;
+            --border-color: #222222;
+            --success: #ffffff;
+            --danger: #ffffff;
+            --warning: #ffffff;
+            --btn-bg: #ffffff;
+            --btn-text: #000000;
+        }
+
+        :root.light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eeeeee;
+            --text-primary: #000000;
+            --text-secondary: #555555;
+            --text-muted: #999999;
+            --border-color: #dddddd;
+            --btn-bg: #000000;
+            --btn-text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, input, button, select, textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Container */
+        .container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Header Layout */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.025em;
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 0.75rem 1rem;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 0;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        body.light-theme .btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-bg);
+            color: var(--btn-text);
+        }
+
+        .btn-primary:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-danger:hover {
+            background: #ff3333;
+            border-color: #ff3333;
+            color: #ffffff;
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 0.25rem 0.5rem;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            width: 100%;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-icon {
+            color: var(--text-muted);
+            margin-left: 0.25rem;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Breadcrumbs path navigation */
+        .breadcrumbs {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+
+        .breadcrumb-item {
+            color: var(--text-secondary);
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--text-primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-primary);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        /* Main File Table Section */
+        .main-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            flex-grow: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.875rem;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.01);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            color: var(--text-primary);
+        }
+
+        tr {
+            transition: background 0.2s;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+            max-width: 450px;
+        }
+
+        .file-name-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            color: var(--text-secondary);
+        }
+
+        .file-date {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        /* Actions Column */
+        .actions-cell {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 0.375rem;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            width: 72px;
+            height: 28px;
+            padding: 0 !important;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5rem 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            gap: 1rem;
+        }
+
+        /* Status Bar */
+        footer {
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        /* Modals and Overlays */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            width: 100%;
+            max-width: 480px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .modal-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--text-primary);
+        }
+
+        .modal-footer {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.01);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Drag and Drop Upload UI */
+        .dropzone {
+            border: 2px dashed var(--border-color);
+            border-radius: 0;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+        }
+
+        .dropzone.dragover {
+            border-color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .progress-track {
+            background: var(--bg-tertiary);
+            border-radius: 0;
+            height: 8px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar {
+            background: var(--text-primary);
+            height: 100%;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 2000;
+            max-width: 360px;
+            width: 100%;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--text-primary);
+            border-radius: 0;
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-success { border-left-color: var(--text-primary); }
+        .toast-error { border-left-color: #ff3333; }
+        .toast-warning { border-left-color: var(--text-primary); }
+
+        .toast-content {
+            flex-grow: 1;
+        }
+
+        .toast-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.125rem;
+        }
+
+        .toast-message {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive hides */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .search-container {
+                max-width: none;
+            }
+            .btn {
+                justify-content: center;
+                flex-grow: 1;
+            }
+            .tool-group {
+                width: 100%;
+            }
+            .hide-mobile {
+                display: none;
+            }
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr {
+                border: 1px solid var(--border-color);
+                border-radius: 0;
+                margin-bottom: 0.75rem;
+                background: rgba(255, 255, 255, 0.01);
+                padding: 0.5rem;
+            }
+            td {
+                border: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+                position: relative;
+                padding-left: 40%;
+                text-align: right;
+                padding-top: 0.625rem;
+                padding-bottom: 0.625rem;
+            }
+            td:last-child {
+                border-bottom: none;
+            }
+            td::before {
+                position: absolute;
+                top: 50%;
+                left: 1rem;
+                transform: translateY(-50%);
+                font-weight: 600;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                font-size: 0.75rem;
+                content: attr(data-label);
+            }
+            .file-name-cell {
+                max-width: none;
+                justify-content: flex-end;
+            }
+            .actions-cell {
+                justify-content: flex-end;
+            }
+            footer {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Merged Toolbar containing Title, Path, Actions, Search, and Theme/Status -->
+        <header class="toolbar">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span class="logo-text">GOPHRDRV</span>
+                <nav class="breadcrumbs" aria-label="Breadcrumb">
+                    <a href="?path=" class="breadcrumb-item">
+                        Root
+                    </a>
+                    {{range .Breadcrumbs}}
+                    <span class="breadcrumb-separator">/</span>
+                    {{if .Active}}
+                    <span class="breadcrumb-item active">{{.Name}}</span>
+                    {{else}}
+                    <a href="?path={{.Path}}" class="breadcrumb-item">{{.Name}}</a>
+                    {{end}}
+                    {{end}}
+                </nav>
+            </div>
+            
+            <div style="flex-grow: 1;"></div>
+            
+            <div class="tool-group">
+                <button class="btn btn-primary" onclick="openUploadModal()">
+                    Upload
+                </button>
+                <button class="btn" onclick="openNewFolderModal()">
+                    New Folder
+                </button>
+                <button class="btn" onclick="openNewFileModal()">
+                    New File
+                </button>
+                <button class="btn" onclick="window.location.reload()">
+                    Refresh
+                </button>
+            </div>
+            <form class="search-container" action="" method="GET">
+                <input type="hidden" name="path" value="{{.CurrentPath}}">
+                <input type="text" name="q" id="searchInput" class="search-input" placeholder="Search current directory..." value="{{.SearchQuery}}" oninput="filterTableRows()">
+                <button type="submit" class="btn" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Search</button>
+            </form>
+            <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
+            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[LOCAL]</span>
+        </header>
+
+        {{if .SearchQuery}}
+        <div style="font-size: 0.875rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+            <span>Search results for query: <strong style="color: var(--text-primary);">{{.SearchQuery}}</strong></span>
+            <a href="?path={{.CurrentPath}}" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear Search</a>
+        </div>
+        {{end}}
+
+        <!-- Main Card containing directories & files -->
+        <main class="main-card">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th class="hide-mobile" style="width: 15%;">Size</th>
+                            <th class="hide-mobile" style="width: 25%;">Modified</th>
+                            <th style="width: 390px; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{if not .Entries}}
+                        <tr>
+                            <td colspan="4" style="padding: 0;">
+                                <div class="empty-state">
+                                    <p style="font-weight: 500; font-size: 1rem; color: var(--text-primary);">This directory is empty</p>
+                                    <p style="font-size: 0.875rem; max-width: 320px;">Use the toolbar buttons to upload a file or create a subfolder.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {{else}}
+                        {{range .Entries}}
+                        <tr class="file-row">
+                            <td data-label="Name">
+                                <div class="file-name-cell">
+                                    {{if .IsDir}}
+                                        <a href="?path={{.Path}}" class="file-name-text" title="Browse {{.Name}}">/{{.Name}}</a>
+                                    {{else}}
+                                        {{if not .IsBinary}}
+                                            <a href="view?file={{.Path}}" class="file-name-text" title="View {{.Name}}">{{.Name}}</a>
+                                        {{else}}
+                                            <a href="download?file={{.Path}}" class="file-name-text" title="Download {{.Name}}">{{.Name}}</a>
+                                        {{end}}
+                                    {{end}}
+                                </div>
+                            </td>
+                            <td class="hide-mobile file-size" data-label="Size">
+                                {{if .IsDir}}
+                                    &mdash;
+                                {{else}}
+                                    {{formatSize .Size}}
+                                {{end}}
+                            </td>
+                            <td class="hide-mobile file-date" data-label="Modified">
+                                {{formatTime .ModTime}}
+                            </td>
+                            <td data-label="Actions">
+                                <div class="actions-cell">
+                                    {{if .IsDir}}
+                                        <a href="?path={{.Path}}" class="btn action-btn" title="Open Folder">Open</a>
+                                    {{else}}
+                                        {{if not .IsBinary}}
+                                        <a href="view?file={{.Path}}" class="btn action-btn" title="View Text">View</a>
+                                        <a href="edit?file={{.Path}}" class="btn action-btn" title="Edit Text">Edit</a>
+                                        {{end}}
+                                        <a href="download?file={{.Path}}" class="btn btn-primary action-btn" title="Download">Get</a>
+                                    {{end}}
+                                    <button class="btn action-btn" title="Rename" onclick="openRenameModal('{{.Path}}', '{{.Name}}')">Rename</button>
+                                    <button class="btn btn-danger action-btn" title="Delete" onclick="openDeleteModal('{{.Path}}', '{{.Name}}', {{.IsDir}})">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Status Bar / Footer -->
+    <footer>
+        <div>
+            Root Path: <strong style="color: var(--text-secondary);">{{.RootPath}}</strong>
+        </div>
+        <div>
+            Max Upload: <strong style="color: var(--text-secondary);">{{.MaxUploadSizeStr}}</strong>
+        </div>
+        <div>
+            GOPHRDRV v{{.AppVersion}} &bull; {{.EntriesCount}} items listed
+        </div>
+    </footer>
+
+    <!-- New Folder Modal -->
+    <div id="newFolderModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Folder</h3>
+                <button class="modal-close" onclick="closeNewFolderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="folderName" class="form-label">Folder Name</label>
+                    <input type="text" id="folderName" class="form-control" placeholder="Enter folder name" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeNewFolderModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitNewFolder()">Create Folder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New File Modal -->
+    <div id="newFileModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New File</h3>
+                <button class="modal-close" onclick="closeNewFileModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="fileName" class="form-label">File Name</label>
+                    <input type="text" id="fileName" class="form-control" placeholder="e.g. notes.txt" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeNewFileModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitNewFile()">Create File</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="renameModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Rename Item</h3>
+                <button class="modal-close" onclick="closeRenameModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="renamePath">
+                <div class="form-group">
+                    <label for="renameNewName" class="form-label">New Name</label>
+                    <input type="text" id="renameNewName" class="form-control" placeholder="Enter new name" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeRenameModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitRename()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="deleteModalTitle">Confirm Delete</h3>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deletePath">
+                <p id="deleteMessage">Are you sure you want to delete this item? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="submitDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Upload File</h3>
+                <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <p style="font-weight: 500; font-size: 0.875rem;">Drag and drop file here, or click to select</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Max size: {{.MaxUploadSizeStr}}</p>
+                    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+
+                <div id="uploadFileInfo" style="display: none; font-size: 0.875rem; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    File: <strong id="uploadFileName" style="color: var(--text-primary);"></strong> (<span id="uploadFileSize"></span>)
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-track">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                        <span id="progressSpeed">Uploading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="uploadCancelBtn" onclick="closeUploadModal()">Cancel</button>
+                <button class="btn btn-primary" id="uploadSubmitBtn" onclick="submitUpload()" disabled>Start Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const currentPath = "{{.CurrentPath}}";
+
+        function filterTableRows() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.file-row');
+            rows.forEach(row => {
+                const nameLink = row.querySelector('.file-name-text');
+                if (nameLink) {
+                    const name = nameLink.textContent.toLowerCase();
+                    // Strip leading slash if any (folders have it, files don't)
+                    const normalizedName = name.startsWith('/') ? name.substring(1) : name;
+                    if (normalizedName.includes(query) || name.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            toast.offsetHeight;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 4000);
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function openNewFolderModal() {
+            document.getElementById('folderName').value = '';
+            openModal('newFolderModal');
+            document.getElementById('folderName').focus();
+        }
+
+        function closeNewFolderModal() {
+            closeModal('newFolderModal');
+        }
+
+        function openNewFileModal() {
+            document.getElementById('fileName').value = '';
+            openModal('newFileModal');
+            document.getElementById('fileName').focus();
+        }
+
+        function closeNewFileModal() {
+            closeModal('newFileModal');
+        }
+
+        async function submitNewFile() {
+            const name = document.getElementById('fileName').value.trim();
+            if (!name) {
+                showToast('Validation Error', 'File name cannot be empty', 'error');
+                return;
+            }
+
+            let filePath = name;
+            if (currentPath && currentPath !== '.' && currentPath !== '/') {
+                filePath = currentPath + '/' + name;
+            }
+
+            try {
+                const response = await fetch('save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        file: filePath,
+                        content: ''
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Success', `File "${name}" created successfully`);
+                    closeNewFileModal();
+                    window.location.href = `/edit?file=${encodeURIComponent(filePath)}`;
+                } else {
+                    const errorMsg = await response.text();
+                    showToast('Error', errorMsg || 'Failed to create file', 'error');
+                }
+            } catch (e) {
+                showToast('Error', 'Connection error: ' + e, 'error');
+            }
+        }
+
+        async function submitNewFolder() {
+            const name = document.getElementById('folderName').value.trim();
+            if (!name) {
+                showToast('Validation Error', 'Folder name cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('mkdir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        path: currentPath,
+                        name: name
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Success', `Folder "${name}" created successfully`);
+                    closeNewFolderModal();
+                    setTimeout(() => {
+                        window.location.href = `?path=${encodeURIComponent(currentPath)}`;
+                    }, 1000);
+                } else {
+                    const errorMsg = await response.text();
+                    showToast('Error', errorMsg || 'Failed to create folder', 'error');
+                }
+            } catch (err) {
+                showToast('Network Error', err.message || 'An unexpected error occurred', 'error');
+            }
+        }
+
+        function openRenameModal(path, currentName) {
+            document.getElementById('renamePath').value = path;
+            document.getElementById('renameNewName').value = currentName;
+            openModal('renameModal');
+            document.getElementById('renameNewName').focus();
+            document.getElementById('renameNewName').select();
+        }
+
+        function closeRenameModal() {
+            closeModal('renameModal');
+        }
+
+        async function submitRename() {
+            const path = document.getElementById('renamePath').value;
+            const newName = document.getElementById('renameNewName').value.trim();
+            if (!newName) {
+                showToast('Validation Error', 'New name cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        path: path,
+                        newName: newName
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Success', `Renamed successfully`);
+                    closeRenameModal();
+                    setTimeout(() => {
+                        window.location.href = `?path=${encodeURIComponent(currentPath)}`;
+                    }, 1000);
+                } else {
+                    const errorMsg = await response.text();
+                    showToast('Error', errorMsg || 'Failed to rename item', 'error');
+                }
+            } catch (err) {
+                showToast('Network Error', err.message || 'An unexpected error occurred', 'error');
+            }
+        }
+
+        function openDeleteModal(path, name, isDir) {
+            document.getElementById('deletePath').value = path;
+            const itemType = isDir ? 'directory' : 'file';
+            document.getElementById('deleteModalTitle').innerText = `Delete ${isDir ? 'Folder' : 'File'}`;
+            document.getElementById('deleteMessage').innerHTML = `Are you sure you want to delete the ${itemType} <strong style="color: var(--text-primary);">${name}</strong>? This action cannot be undone.`;
+            openModal('deleteModal');
+        }
+
+        function closeDeleteModal() {
+            closeModal('deleteModal');
+        }
+
+        async function submitDelete() {
+            const path = document.getElementById('deletePath').value;
+            try {
+                const response = await fetch('delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        path: path
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Success', 'Item deleted successfully');
+                    closeDeleteModal();
+                    setTimeout(() => {
+                        window.location.href = `?path=${encodeURIComponent(currentPath)}`;
+                    }, 1000);
+                } else {
+                    const errorMsg = await response.text();
+                    showToast('Error', errorMsg || 'Failed to delete item', 'error');
+                }
+            } catch (err) {
+                showToast('Network Error', err.message || 'An unexpected error occurred', 'error');
+            }
+        }
+
+        let selectedFile = null;
+
+        function openUploadModal() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadFileInfo').style.display = 'none';
+            document.getElementById('uploadSubmitBtn').disabled = true;
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressPercent').innerText = '0%';
+            document.getElementById('dropzone').style.display = 'flex';
+            openModal('uploadModal');
+        }
+
+        function closeUploadModal() {
+            closeModal('uploadModal');
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                setupFile(files[0]);
+            }
+        }
+
+        function setupFile(file) {
+            selectedFile = file;
+            document.getElementById('uploadFileName').innerText = file.name;
+            document.getElementById('uploadFileSize').innerText = formatBytes(file.size);
+            document.getElementById('uploadFileInfo').style.display = 'block';
+            document.getElementById('uploadSubmitBtn').disabled = false;
+        }
+
+        const dropzone = document.getElementById('dropzone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', e => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                setupFile(files[0]);
+            }
+        }, false);
+
+        function submitUpload() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('path', currentPath);
+
+            document.getElementById('dropzone').style.display = 'none';
+            document.getElementById('uploadSubmitBtn').disabled = true;
+            document.getElementById('uploadCancelBtn').disabled = true;
+            document.getElementById('progressContainer').style.display = 'flex';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'upload', true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    document.getElementById('progressBar').style.width = percent + '%';
+                    document.getElementById('progressPercent').innerText = percent + '%';
+                    
+                    const loadedStr = formatBytes(e.loaded);
+                    const totalStr = formatBytes(e.total);
+                    document.getElementById('progressSpeed').innerText = `${loadedStr} of ${totalStr}`;
+                }
+            };
+
+            xhr.onload = function() {
+                document.getElementById('uploadCancelBtn').disabled = false;
+                if (xhr.status === 200) {
+                    showToast('Success', 'File uploaded successfully');
+                    closeUploadModal();
+                    setTimeout(() => {
+                        window.location.href = `?path=${encodeURIComponent(currentPath)}`;
+                    }, 1000);
+                } else {
+                    const errorMsg = xhr.responseText || 'Failed to upload file';
+                    showToast('Error', errorMsg, 'error');
+                    document.getElementById('dropzone').style.display = 'flex';
+                    document.getElementById('progressContainer').style.display = 'none';
+                    document.getElementById('uploadSubmitBtn').disabled = false;
+                }
+            };
+
+            xhr.onerror = function() {
+                document.getElementById('uploadCancelBtn').disabled = false;
+                showToast('Error', 'Network error during upload', 'error');
+                document.getElementById('dropzone').style.display = 'flex';
+                document.getElementById('progressContainer').style.display = 'none';
+                document.getElementById('uploadSubmitBtn').disabled = false;
+            };
+
+            xhr.send(formData);
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                if (event.target.id === 'uploadModal' && document.getElementById('uploadCancelBtn').disabled) {
+                    return;
+                }
+                event.target.classList.remove('active');
+            }
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('light-theme')) {
+                document.documentElement.classList.remove('light-theme');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.add('light-theme');
+                localStorage.setItem('theme', 'light');
+            }
+            updateThemeButtonLabel();
+        }
+
+        function updateThemeButtonLabel() {
+            const btn = document.getElementById('themeToggleBtn');
+            if (!btn) return;
+            if (document.documentElement.classList.contains('light-theme')) {
+                btn.innerText = '[LIGHT]';
+            } else {
+                btn.innerText = '[DARK]';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateThemeButtonLabel();
+        });
+    </script>
+</body>
+</html>

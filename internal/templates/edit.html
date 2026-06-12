@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editing {{.FileName}} - File Server</title>
+
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+        }
+    </script>
+    <style>
+        html {
+            overflow-y: scroll;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #000000;
+            --bg-tertiary: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --text-muted: #666666;
+            --border-color: #222222;
+            --btn-bg: #ffffff;
+            --btn-text: #000000;
+        }
+
+        :root.light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eeeeee;
+            --text-primary: #000000;
+            --text-secondary: #555555;
+            --text-muted: #999999;
+            --border-color: #dddddd;
+            --btn-bg: #000000;
+            --btn-text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, input, button, select, textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Header Layout */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.025em;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 0.75rem 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 0;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        body.light-theme-class-placeholder .btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-bg);
+            color: var(--btn-text);
+        }
+
+        .btn-primary:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+
+        /* Toggle Switches */
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-left: auto;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Checkbox styling */
+        .checkbox-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            appearance: none;
+            background: var(--bg-tertiary);
+            outline: none;
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .checkbox-switch::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 0;
+            top: 2px;
+            left: 2px;
+            background: var(--text-secondary);
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .checkbox-switch:checked {
+            background: var(--text-primary);
+        }
+
+        .checkbox-switch:checked::before {
+            transform: translateX(16px);
+            background: var(--bg-primary);
+        }
+
+        /* Main Edit Card */
+        .main-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .file-meta-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.01);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .file-meta-item {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        .file-meta-val {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Editor Area styling */
+        .editor-container {
+            display: flex;
+            position: relative;
+            flex-grow: 1;
+            background: var(--bg-tertiary);
+        }
+
+        .editor-textarea {
+            width: 100%;
+            height: auto;
+            min-height: 60vh;
+            padding: 1rem 1rem 1.5rem 1rem;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: none;
+            outline: none;
+            resize: none;
+            white-space: pre;
+            overflow-y: hidden;
+            overflow-x: auto;
+        }
+
+        .editor-textarea.wrap-lines {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 2000;
+            max-width: 360px;
+            width: 100%;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--text-primary);
+            border-radius: 0;
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-content {
+            flex-grow: 1;
+        }
+
+        .toast-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.125rem;
+        }
+
+        .toast-message {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                gap: 1rem;
+            }
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+                text-align: center;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 1rem;
+            }
+            .btn {
+                justify-content: center;
+                width: 100%;
+            }
+            .toggle-group {
+                margin-left: 0;
+                justify-content: center;
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+            .file-meta-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+                padding: 1rem;
+            }
+            .editor-textarea {
+                min-height: 45vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Merged Toolbar containing Title, Path, Actions, Theme/Status -->
+        <header class="toolbar">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span class="logo-text">GOPHRDRV</span>
+                <span style="color: var(--text-muted); font-size: 0.875rem;">/ {{.FileName}} [EDITING]</span>
+            </div>
+            
+            <div style="flex-grow: 1;"></div>
+
+            <a href="/browse?path={{.ParentPath}}" class="btn" id="backBtn">
+                Back to Folder
+            </a>
+
+            <a href="/view?file={{.FilePath}}" class="btn">
+                View Text
+            </a>
+            
+            <button class="btn btn-primary" onclick="saveFile()">
+                Save File (Ctrl+S)
+            </button>
+
+            <div class="toggle-group" style="margin-left: 0;">
+                <label class="toggle-container" for="wrapToggle">
+                    <span>Wrap Lines</span>
+                    <input type="checkbox" id="wrapToggle" class="checkbox-switch" onchange="toggleWrap(this)">
+                </label>
+            </div>
+
+            <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
+            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[EDIT]</span>
+        </header>
+
+        <!-- Main Card -->
+        <main class="main-card">
+            <div class="file-meta-header">
+                <div class="file-meta-item">
+                    Editing File: <span class="file-meta-val">{{.FileName}}</span>
+                </div>
+                <div class="file-meta-item">
+                    Path: <span class="file-meta-val">{{.FilePath}}</span>
+                </div>
+                <div class="file-meta-item">
+                    Current Size: <span class="file-meta-val" id="metaSize">{{.SizeStr}}</span>
+                </div>
+                <div class="file-meta-item">
+                    Last Saved: <span class="file-meta-val" id="metaModified">{{.ModTimeStr}}</span>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <textarea class="editor-textarea" id="editorContent" spellcheck="false" autocomplete="off" autofocus>{{.Content}}</textarea>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function adjustHeight() {
+            const textarea = document.getElementById('editorContent');
+            if (textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateThemeButtonLabel();
+            
+            adjustHeight();
+            const textarea = document.getElementById('editorContent');
+            if (textarea) {
+                textarea.addEventListener('input', adjustHeight);
+            }
+            
+            // Register Keyboard Shortcut: Ctrl+S or Cmd+S to save
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    saveFile();
+                }
+            });
+        });
+
+        function toggleWrap(checkbox) {
+            const textarea = document.getElementById('editorContent');
+            if (checkbox.checked) {
+                textarea.classList.add('wrap-lines');
+            } else {
+                textarea.classList.remove('wrap-lines');
+            }
+            adjustHeight();
+        }
+
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            if (type === 'error') {
+                toast.style.borderLeftColor = 'var(--text-secondary)'; // Monochrome error alert style
+            }
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+            toast.offsetHeight; // trigger reflow
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function saveFile() {
+            const content = document.getElementById('editorContent').value;
+            const filePath = "{{.FilePath}}";
+            
+            const formData = new FormData();
+            formData.append('file', filePath);
+            formData.append('content', content);
+
+            // Disable editor temporarily during save to prevent multi-submissions
+            const textarea = document.getElementById('editorContent');
+            textarea.disabled = true;
+
+            fetch('/save', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(async response => {
+                textarea.disabled = false;
+                if (response.ok) {
+                    showToast('Saved', 'File has been saved successfully!');
+                    
+                    // Update metadata indicators (e.g. Size and Modification Time)
+                    const now = new Date();
+                    const timeStr = now.getFullYear() + '-' + 
+                                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                                    String(now.getDate()).padStart(2, '0') + ' ' + 
+                                    String(now.getHours()).padStart(2, '0') + ':' + 
+                                    String(now.getMinutes()).padStart(2, '0') + ':' + 
+                                    String(now.getSeconds()).padStart(2, '0');
+                    document.getElementById('metaModified').innerText = timeStr;
+                    
+                    // Format size estimate
+                    const bytes = new Blob([content]).size;
+                    document.getElementById('metaSize').innerText = formatBytes(bytes);
+                } else {
+                    const text = await response.text();
+                    showToast('Save Failed', text || 'Failed to save changes.', 'error');
+                }
+            })
+            .catch(err => {
+                textarea.disabled = false;
+                showToast('Save Error', 'Connection error: ' + err, 'error');
+            });
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('light-theme')) {
+                document.documentElement.classList.remove('light-theme');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.add('light-theme');
+                localStorage.setItem('theme', 'light');
+            }
+            updateThemeButtonLabel();
+        }
+
+        function updateThemeButtonLabel() {
+            const btn = document.getElementById('themeToggleBtn');
+            if (!btn) return;
+            if (document.documentElement.classList.contains('light-theme')) {
+                btn.innerText = '[LIGHT]';
+            } else {
+                btn.innerText = '[DARK]';
+            }
+        }
+    </script>
+</body>
+</html>
