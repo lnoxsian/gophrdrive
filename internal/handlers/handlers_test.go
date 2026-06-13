@@ -269,6 +269,28 @@ func TestDownloadHandler(t *testing.T) {
 	if w.Result().StatusCode != http.StatusNotFound {
 		t.Errorf("expected status NotFound, got %v", w.Result().StatusCode)
 	}
+
+	// 5. Success case: download directory as ZIP
+	subDir := filepath.Join(tmpDir, "subfolder")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "inner.txt"), []byte("inner content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/download?file=subfolder", nil)
+	w = httptest.NewRecorder()
+	ctx.DownloadHandler(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Errorf("expected status OK for directory download, got %v", w.Result().StatusCode)
+	}
+	if contentType := w.Result().Header.Get("Content-Type"); contentType != "application/zip" {
+		t.Errorf("expected Content-Type application/zip, got %v", contentType)
+	}
+	if contentDisposition := w.Result().Header.Get("Content-Disposition"); contentDisposition != "attachment; filename=\"subfolder.zip\"" {
+		t.Errorf("expected Content-Disposition attachment; filename=\"subfolder.zip\", got %v", contentDisposition)
+	}
 }
 
 func TestDownloadZipHandler(t *testing.T) {

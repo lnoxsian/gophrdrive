@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"archive/zip"
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -49,7 +50,59 @@ func (h *HandlerContext) DownloadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if info.IsDir() {
-		h.RenderError(w, http.StatusBadRequest, "Bad Request", "Directories cannot be downloaded directly.")
+		// Set headers to stream ZIP content to the browser
+		dirName := filepath.Base(safePath)
+		zipFilename := fmt.Sprintf("%s.zip", dirName)
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+zipFilename+"\"")
+		w.Header().Set("Content-Type", "application/zip")
+
+		// Create buffered writer to reduce network writing system calls
+		bufWriter := bufio.NewWriter(w)
+		defer bufWriter.Flush()
+
+		// Create zip writer writing to buffered writer
+		zw := zip.NewWriter(bufWriter)
+		defer zw.Close()
+
+		// Pre-allocate 128KB copy buffer for reuse
+		copyBuf := make([]byte, 128*1024)
+
+		safeParent := filepath.Dir(safePath)
+
+		// Recursively walk directory and add files to zip
+		err = filepath.WalkDir(safePath, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+
+			// Get relative path in zip with respect to parent dir
+			relInZip, err := filepath.Rel(safeParent, path)
+			if err != nil {
+				return err
+			}
+
+			// Convert to slash for zip standard
+			relInZip = filepath.ToSlash(relInZip)
+
+			if d.IsDir() {
+				// Directory entry in ZIP ends with a slash and has no content
+				if relInZip != "" && relInZip != "." {
+					_, err = zw.Create(relInZip + "/")
+					return err
+				}
+				return nil
+			}
+
+			// It's a file, add it
+			return addFileToZip(zw, path, relInZip, copyBuf)
+		})
+		if err != nil {
+			h.LogError("Directory ZIP download: failed walking folder %s: %v", relPath, err)
+			return
+		}
+
+		// Log download operation
+		h.LogInfo("downloaded directory %s as ZIP", relPath)
 		return
 	}
 
@@ -124,9 +177,16 @@ func (h *HandlerContext) DownloadZipHandler(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+zipFilename+"\"")
 	w.Header().Set("Content-Type", "application/zip")
 
-	// Create zip writer directly writing to response
-	zw := zip.NewWriter(w)
+	// Create buffered writer to reduce network writing system calls
+	bufWriter := bufio.NewWriter(w)
+	defer bufWriter.Flush()
+
+	// Create zip writer writing to buffered writer
+	zw := zip.NewWriter(bufWriter)
 	defer zw.Close()
+
+	// Pre-allocate 128KB copy buffer for reuse
+	copyBuf := make([]byte, 128*1024)
 
 	for _, relItemPath := range files {
 		safeItemPath, _ := filesystem.ResolveSafePath(h.Cfg.Root, relItemPath)
@@ -161,7 +221,7 @@ func (h *HandlerContext) DownloadZipHandler(w http.ResponseWriter, r *http.Reque
 				}
 
 				// It's a file, add it
-				return addFileToZip(zw, path, relInZip)
+				return addFileToZip(zw, path, relInZip, copyBuf)
 			})
 			if err != nil {
 				h.LogError("ZIP download: failed walking folder %s: %v", relItemPath, err)
@@ -176,7 +236,7 @@ func (h *HandlerContext) DownloadZipHandler(w http.ResponseWriter, r *http.Reque
 			}
 			relInZip = filepath.ToSlash(relInZip)
 
-			err = addFileToZip(zw, safeItemPath, relInZip)
+			err = addFileToZip(zw, safeItemPath, relInZip, copyBuf)
 			if err != nil {
 				h.LogError("ZIP download: failed adding file %s to zip: %v", relItemPath, err)
 				return
@@ -187,7 +247,7 @@ func (h *HandlerContext) DownloadZipHandler(w http.ResponseWriter, r *http.Reque
 	h.LogInfo("downloaded ZIP archive containing %d items", len(files))
 }
 
-func addFileToZip(zw *zip.Writer, safeFilePath, relInZip string) error {
+func addFileToZip(zw *zip.Writer, safeFilePath, relInZip string, copyBuf []byte) error {
 	file, err := os.Open(safeFilePath)
 	if err != nil {
 		return err
@@ -212,6 +272,6 @@ func addFileToZip(zw *zip.Writer, safeFilePath, relInZip string) error {
 		return err
 	}
 
-	_, err = io.Copy(writer, file)
+	_, err = io.CopyBuffer(writer, file, copyBuf)
 	return err
 }

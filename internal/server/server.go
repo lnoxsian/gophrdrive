@@ -1,17 +1,63 @@
 package server
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/lnoxsian/gophrdrv/internal/config"
 	"github.com/lnoxsian/gophrdrv/internal/handlers"
 )
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	io.Writer
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func GzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip compression for binary streaming and file transfer endpoints
+		path := r.URL.Path
+		if path == "/download" || path == "/download-zip" || path == "/upload" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Initialize gzip writer at BestSpeed level to optimize transfer speed with minimal CPU overhead
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		defer gz.Close()
+
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Del("Content-Length")
+
+		grw := gzipResponseWriter{
+			ResponseWriter: w,
+			Writer:         gz,
+		}
+
+		next.ServeHTTP(grw, r)
+	})
+}
 
 type Server struct {
 	cfg *config.Config
@@ -41,7 +87,7 @@ func (s *Server) Start() error {
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      GzipMiddleware(mux),
 		ReadTimeout:  s.cfg.ReadTimeout,
 		WriteTimeout: s.cfg.WriteTimeout,
 	}

@@ -54,6 +54,9 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Pre-allocate 128KB copy buffer to reduce system calls during file writes
+	uploadBuf := make([]byte, 128*1024)
+
 	for _, fileHeader := range files {
 		multipartFile, err := fileHeader.Open()
 		if err != nil {
@@ -98,8 +101,8 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Stream file content chunk-by-chunk using io.Copy (prevents loading whole file into memory)
-		_, err = io.Copy(destFile, multipartFile)
+		// Stream file content using copy buffer to optimize network/disk writing performance
+		_, err = io.CopyBuffer(destFile, multipartFile, uploadBuf)
 		destFile.Close()
 		multipartFile.Close()
 		if err != nil {

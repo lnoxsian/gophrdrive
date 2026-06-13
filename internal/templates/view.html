@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Viewing {{.FileName}} - File Server</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22black%22/><text x=%2250%%22 y=%2250%%22 font-size=%2260%22 font-family=%22monospace%22 font-weight=%22bold%22 fill=%22white%22 dominant-baseline=%22central%22 text-anchor=%22middle%22>gd</text></svg>">
 
     <script>
         if (localStorage.getItem('theme') === 'light') {
@@ -105,9 +106,9 @@
             gap: 0.75rem;
             align-items: center;
             background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
             border-radius: 0;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 2rem;
         }
 
         .btn {
@@ -351,46 +352,46 @@
     </style>
 </head>
 <body>
+    <!-- Merged Toolbar containing Title, Path, Actions, Theme/Status -->
+    <header class="toolbar">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <nav class="breadcrumbs" aria-label="Breadcrumb">
+                <a href="/browse?path={{.ParentPath}}" class="logo-text" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center;">GOPHRDRV</a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">{{.FileName}}</span>
+            </nav>
+        </div>
+        
+        <div style="flex-grow: 1;"></div>
+
+        <a href="/browse?path={{.ParentPath}}" class="btn">
+            Back to Folder
+        </a>
+        
+        <button class="btn" onclick="copyToClipboard()">
+            Copy Content
+        </button>
+
+        <a href="/edit?file={{.FilePath}}" class="btn">
+            Edit File
+        </a>
+
+        <a href="download?file={{.FilePath}}" class="btn btn-primary">
+            Download Raw
+        </a>
+
+        <div class="toggle-group" style="margin-left: 0;">
+            <label class="toggle-container" for="wrapToggle">
+                <span>Wrap Lines</span>
+                <input type="checkbox" id="wrapToggle" class="checkbox-switch" onchange="toggleWrap(this)">
+            </label>
+        </div>
+
+        <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
+        <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[VIEWER]</span>
+    </header>
+
     <div class="container">
-        <!-- Merged Toolbar containing Title, Path, Actions, Theme/Status -->
-        <header class="toolbar">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <nav class="breadcrumbs" aria-label="Breadcrumb">
-                    <a href="/browse?path={{.ParentPath}}" class="logo-text" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center;">GOPHRDRV</a>
-                    <span class="breadcrumb-separator">/</span>
-                    <span class="breadcrumb-item active">{{.FileName}}</span>
-                </nav>
-            </div>
-            
-            <div style="flex-grow: 1;"></div>
-
-            <a href="/browse?path={{.ParentPath}}" class="btn">
-                Back to Folder
-            </a>
-            
-            <button class="btn" onclick="copyToClipboard()">
-                Copy Content
-            </button>
-
-            <a href="/edit?file={{.FilePath}}" class="btn">
-                Edit File
-            </a>
-
-            <a href="download?file={{.FilePath}}" class="btn btn-primary">
-                Download Raw
-            </a>
-
-            <div class="toggle-group" style="margin-left: 0;">
-                <label class="toggle-container" for="wrapToggle">
-                    <span>Wrap Lines</span>
-                    <input type="checkbox" id="wrapToggle" class="checkbox-switch" onchange="toggleWrap(this)">
-                </label>
-            </div>
-
-            <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
-            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[VIEWER]</span>
-        </header>
-
         <!-- Main Card with metadata and code text -->
         <main class="main-card">
             <div class="file-meta-header">
