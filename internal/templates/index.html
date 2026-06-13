@@ -54,6 +54,40 @@
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-tertiary);
+            border-radius: 0;
+            display: inline-grid;
+            place-content: center;
+            cursor: pointer;
+            margin: 0;
+            vertical-align: middle;
+        }
+
+        input[type="checkbox"]::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            background-color: var(--text-primary);
+            /* Custom CSS Checkmark Icon path */
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+
+        input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+
+        input[type="checkbox"]:checked {
+            border-color: var(--text-primary);
+        }
+
         body {
             background-color: var(--bg-primary);
             color: var(--text-primary);
@@ -627,12 +661,9 @@
     <div class="container">
         <!-- Merged Toolbar containing Title, Path, Actions, Search, and Theme/Status -->
         <header class="toolbar">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="logo-text">GOPHRDRV</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <nav class="breadcrumbs" aria-label="Breadcrumb">
-                    <a href="?path=" class="breadcrumb-item">
-                        Root
-                    </a>
+                    <a href="?path=" class="logo-text" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center;">GOPHRDRV</a>
                     {{range .Breadcrumbs}}
                     <span class="breadcrumb-separator">/</span>
                     {{if .Active}}
@@ -659,6 +690,9 @@
                 <button class="btn" onclick="window.location.reload()">
                     Refresh
                 </button>
+                <button class="btn btn-primary" id="downloadZipBtn" onclick="downloadSelectedZip()" style="display: none;">
+                    Download Selected
+                </button>
             </div>
             <form class="search-container" action="" method="GET">
                 <input type="hidden" name="path" value="{{.CurrentPath}}">
@@ -682,6 +716,9 @@
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center; vertical-align: middle;">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;">
+                            </th>
                             <th>Name</th>
                             <th class="hide-mobile" style="width: 15%;">Size</th>
                             <th class="hide-mobile" style="width: 25%;">Modified</th>
@@ -691,7 +728,7 @@
                     <tbody>
                         {{if not .Entries}}
                         <tr>
-                            <td colspan="4" style="padding: 0;">
+                            <td colspan="5" style="padding: 0;">
                                 <div class="empty-state">
                                     <p style="font-weight: 500; font-size: 1rem; color: var(--text-primary);">This directory is empty</p>
                                     <p style="font-size: 0.875rem; max-width: 320px;">Use the toolbar buttons to upload a file or create a subfolder.</p>
@@ -701,6 +738,9 @@
                         {{else}}
                         {{range .Entries}}
                         <tr class="file-row">
+                            <td style="text-align: center; vertical-align: middle;">
+                                <input type="checkbox" class="file-select-checkbox" data-path="{{.Path}}" onchange="updateSelectionState()" style="cursor: pointer; width: 16px; height: 16px;">
+                            </td>
                             <td data-label="Name">
                                 <div class="file-name-cell">
                                     {{if .IsDir}}
@@ -844,18 +884,19 @@
     <div id="uploadModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
-                <h3 class="modal-title">Upload File</h3>
+                <h3 class="modal-title">Upload Files</h3>
                 <button class="modal-close" onclick="closeUploadModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-                    <p style="font-weight: 500; font-size: 0.875rem;">Drag and drop file here, or click to select</p>
+                    <p style="font-weight: 500; font-size: 0.875rem;">Drag and drop files here, or click to select</p>
                     <p style="font-size: 0.75rem; color: var(--text-muted);">Max size: {{.MaxUploadSizeStr}}</p>
-                    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+                    <input type="file" id="fileInput" name="files" style="display: none;" multiple onchange="handleFileSelect(event)">
                 </div>
 
-                <div id="uploadFileInfo" style="display: none; font-size: 0.875rem; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                    File: <strong id="uploadFileName" style="color: var(--text-primary);"></strong> (<span id="uploadFileSize"></span>)
+                <div id="uploadFileInfo" style="display: none; font-size: 0.875rem; background: var(--bg-tertiary); padding: 0.75rem; border: 1px solid var(--border-color); max-height: 150px; overflow-y: auto;">
+                    <div id="uploadFilesHeader" style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">Selected Files:</div>
+                    <ul id="uploadFilesList" style="list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.25rem;"></ul>
                 </div>
 
                 <div class="progress-container" id="progressContainer">
@@ -894,9 +935,12 @@
                         row.style.display = '';
                     } else {
                         row.style.display = 'none';
+                        const cb = row.querySelector('.file-select-checkbox');
+                        if (cb) cb.checked = false;
                     }
                 }
             });
+            updateSelectionState();
         }
 
         function showToast(title, message, type = 'success') {
@@ -1101,10 +1145,10 @@
             }
         }
 
-        let selectedFile = null;
+        let selectedUploadFiles = [];
 
         function openUploadModal() {
-            selectedFile = null;
+            selectedUploadFiles = [];
             document.getElementById('fileInput').value = '';
             document.getElementById('uploadFileInfo').style.display = 'none';
             document.getElementById('uploadSubmitBtn').disabled = true;
@@ -1131,16 +1175,41 @@
         function handleFileSelect(e) {
             const files = e.target.files;
             if (files && files.length > 0) {
-                setupFile(files[0]);
+                setupFiles(files);
             }
         }
 
-        function setupFile(file) {
-            selectedFile = file;
-            document.getElementById('uploadFileName').innerText = file.name;
-            document.getElementById('uploadFileSize').innerText = formatBytes(file.size);
+        function setupFiles(filesList) {
+            selectedUploadFiles = Array.from(filesList);
+            const listContainer = document.getElementById('uploadFilesList');
+            listContainer.innerHTML = '';
+            
+            selectedUploadFiles.forEach(file => {
+                const li = document.createElement('li');
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.borderBottom = '1px solid var(--border-color)';
+                li.style.padding = '0.25rem 0';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.innerText = file.name;
+                nameSpan.style.color = 'var(--text-primary)';
+                nameSpan.style.overflow = 'hidden';
+                nameSpan.style.textOverflow = 'ellipsis';
+                nameSpan.style.whiteSpace = 'nowrap';
+                nameSpan.style.maxWidth = '70%';
+                
+                const sizeSpan = document.createElement('span');
+                sizeSpan.innerText = formatBytes(file.size);
+                sizeSpan.style.color = 'var(--text-secondary)';
+                
+                li.appendChild(nameSpan);
+                li.appendChild(sizeSpan);
+                listContainer.appendChild(li);
+            });
+            
             document.getElementById('uploadFileInfo').style.display = 'block';
-            document.getElementById('uploadSubmitBtn').disabled = false;
+            document.getElementById('uploadSubmitBtn').disabled = selectedUploadFiles.length === 0;
         }
 
         const dropzone = document.getElementById('dropzone');
@@ -1165,15 +1234,17 @@
             const dt = e.dataTransfer;
             const files = dt.files;
             if (files && files.length > 0) {
-                setupFile(files[0]);
+                setupFiles(files);
             }
         }, false);
 
         function submitUpload() {
-            if (!selectedFile) return;
+            if (selectedUploadFiles.length === 0) return;
 
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            selectedUploadFiles.forEach(file => {
+                formData.append('files', file);
+            });
             formData.append('path', currentPath);
 
             document.getElementById('dropzone').style.display = 'none';
@@ -1199,13 +1270,13 @@
             xhr.onload = function() {
                 document.getElementById('uploadCancelBtn').disabled = false;
                 if (xhr.status === 200) {
-                    showToast('Success', 'File uploaded successfully');
+                    showToast('Success', 'Files uploaded successfully');
                     closeUploadModal();
                     setTimeout(() => {
                         window.location.href = `?path=${encodeURIComponent(currentPath)}`;
                     }, 1000);
                 } else {
-                    const errorMsg = xhr.responseText || 'Failed to upload file';
+                    const errorMsg = xhr.responseText || 'Failed to upload files';
                     showToast('Error', errorMsg, 'error');
                     document.getElementById('dropzone').style.display = 'flex';
                     document.getElementById('progressContainer').style.display = 'none';
@@ -1254,8 +1325,89 @@
             }
         }
 
+        function toggleSelectAll(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.file-select-checkbox');
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (row && row.style.display !== 'none') {
+                    cb.checked = masterCheckbox.checked;
+                }
+            });
+            updateSelectionState();
+        }
+
+        function updateSelectionState() {
+            const checkboxes = document.querySelectorAll('.file-select-checkbox');
+            let selectedCount = 0;
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (cb.checked && row && row.style.display !== 'none') {
+                    selectedCount++;
+                }
+            });
+
+            const btn = document.getElementById('downloadZipBtn');
+            if (btn) {
+                if (selectedCount > 0) {
+                    btn.textContent = `Download Selected (${selectedCount})`;
+                    btn.style.display = 'inline-flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            }
+
+            const master = document.getElementById('selectAllCheckbox');
+            if (master) {
+                const visibleCheckboxes = Array.from(checkboxes).filter(cb => {
+                    const row = cb.closest('tr');
+                    return row && row.style.display !== 'none';
+                });
+                if (visibleCheckboxes.length > 0) {
+                    master.checked = visibleCheckboxes.every(cb => cb.checked);
+                } else {
+                    master.checked = false;
+                }
+            }
+        }
+
+        function downloadSelectedZip() {
+            const checkboxes = document.querySelectorAll('.file-select-checkbox');
+            const selectedFiles = [];
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (cb.checked && row && row.style.display !== 'none') {
+                    selectedFiles.push(cb.getAttribute('data-path'));
+                }
+            });
+
+            if (selectedFiles.length === 0) return;
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/download-zip';
+
+            const pathInput = document.createElement('input');
+            pathInput.type = 'hidden';
+            pathInput.name = 'path';
+            pathInput.value = currentPath;
+            form.appendChild(pathInput);
+
+            selectedFiles.forEach(file => {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'hidden';
+                fileInput.name = 'files';
+                fileInput.value = file;
+                form.appendChild(fileInput);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             updateThemeButtonLabel();
+            updateSelectionState();
         });
     </script>
 </body>

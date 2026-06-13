@@ -24,7 +24,7 @@ just test-coverage
 # Run code formatters and check static analysis issues
 just lint
 
-# Compile and launch the fileserver locally
+# Compile and launch gophrdrv locally
 just run
 
 # Clean binary and coverage files
@@ -72,7 +72,7 @@ go tool cover -html=coverage.out -o coverage.html
 To compile the application into a highly-optimized single executable:
 
 ```bash
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o fileserver ./cmd/fileserver
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
 ```
 
 ### Compilation Flag Details:

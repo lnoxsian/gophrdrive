@@ -348,9 +348,12 @@
     <div class="container">
         <!-- Merged Toolbar containing Title, Path, Actions, Theme/Status -->
         <header class="toolbar">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="logo-text">GOPHRDRV</span>
-                <span style="color: var(--text-muted); font-size: 0.875rem;">/ {{.FileName}} [EDITING]</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <nav class="breadcrumbs" aria-label="Breadcrumb">
+                    <a href="/browse?path={{.ParentPath}}" class="logo-text" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center;">GOPHRDRV</a>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item active">{{.FileName}}</span>
+                </nav>
             </div>
             
             <div style="flex-grow: 1;"></div>
@@ -375,7 +378,7 @@
             </div>
 
             <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
-            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[EDIT]</span>
+            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[EDITOR]</span>
         </header>
 
         <!-- Main Card -->

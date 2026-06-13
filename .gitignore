@@ -1,0 +1,23 @@
+# GOPHRDRV Binaries
+gophrdrv
+gophrdrv.exe
+
+# Go Test and Coverage files
+*.out
+*.test
+*.prof
+coverage.html
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local tools or environment files
+.env
+.env.local

@@ -29,6 +29,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/", ctx.BrowseHandler)
 	mux.HandleFunc("/browse", ctx.BrowseHandler)
 	mux.HandleFunc("/download", ctx.DownloadHandler)
+	mux.HandleFunc("/download-zip", ctx.DownloadZipHandler)
 	mux.HandleFunc("/view", ctx.ViewHandler)
 	mux.HandleFunc("/edit", ctx.EditHandler)
 	mux.HandleFunc("/save", ctx.SaveHandler)

@@ -5,7 +5,7 @@ default:
 
 # Build the production single-binary executable
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o fileserver ./cmd/fileserver
+	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
 
 # Run all unit tests
 test:
@@ -22,17 +22,17 @@ lint:
     go fmt ./...
     go vet ./...
 
-# Run the compiled fileserver binary
+# Run the compiled gophrdrv binary
 run root="." port="8080" host="0.0.0.0" max-upload="100MB": build
-    ./fileserver --root "{{root}}" --port {{port}} --host {{host}} --max-upload "{{max-upload}}"
+    ./gophrdrv --root "{{root}}" --port {{port}} --host {{host}} --max-upload "{{max-upload}}"
 
-# Run the fileserver in help mode to show usage flags
+# Run gophrdrv in help mode to show usage flags
 help: build
-    ./fileserver --help
+    ./gophrdrv --help
 
 # Clean build artifacts and coverage reports
 clean:
-    rm -f fileserver coverage.out coverage.html
+    rm -f gophrdrv coverage.out coverage.html
 
 # Update/bump the application version. Bumps the patch version if no argument is specified (e.g. just update-version [1.0.2])
 update-version version="":

@@ -197,6 +197,35 @@ func TestUploadHandler(t *testing.T) {
 	if w.Result().StatusCode != http.StatusForbidden {
 		t.Errorf("expected status Forbidden, got %v", w.Result().StatusCode)
 	}
+
+	// 3. Success case: multiple files
+	body = &bytes.Buffer{}
+	writer = multipart.NewWriter(body)
+	_ = writer.WriteField("path", "")
+	
+	part1, _ := writer.CreateFormFile("files", "upload1.txt")
+	_, _ = part1.Write([]byte("first file content"))
+	
+	part2, _ := writer.CreateFormFile("files", "upload2.txt")
+	_, _ = part2.Write([]byte("second file content"))
+	
+	_ = writer.Close()
+
+	req = httptest.NewRequest(http.MethodPost, "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w = httptest.NewRecorder()
+	ctx.UploadHandler(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Errorf("expected status OK for multi-upload, got %v", w.Result().StatusCode)
+	}
+
+	// Verify both files exist
+	if _, err := os.Stat(filepath.Join(tmpDir, "upload1.txt")); err != nil {
+		t.Errorf("expected upload1.txt to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "upload2.txt")); err != nil {
+		t.Errorf("expected upload2.txt to exist: %v", err)
+	}
 }
 
 func TestDownloadHandler(t *testing.T) {
@@ -237,6 +266,83 @@ func TestDownloadHandler(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/download?file=nonexistent.txt", nil)
 	w = httptest.NewRecorder()
 	ctx.DownloadHandler(w, req)
+	if w.Result().StatusCode != http.StatusNotFound {
+		t.Errorf("expected status NotFound, got %v", w.Result().StatusCode)
+	}
+}
+
+func TestDownloadZipHandler(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	// Create test file and directory
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	if err := os.WriteFile(file1, []byte("file1 content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	subDir := filepath.Join(tmpDir, "folder")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	file2 := filepath.Join(subDir, "file2.txt")
+	if err := os.WriteFile(file2, []byte("file2 content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Success case: Zipping files and folders
+	form := url.Values{}
+	form.Add("path", "")
+	form.Add("files", "file1.txt")
+	form.Add("files", "folder")
+
+	req := httptest.NewRequest(http.MethodPost, "/download-zip", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	ctx.DownloadZipHandler(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status OK, got %v", resp.StatusCode)
+	}
+	if resp.Header.Get("Content-Type") != "application/zip" {
+		t.Errorf("expected Content-Type application/zip, got %q", resp.Header.Get("Content-Type"))
+	}
+	if !strings.Contains(resp.Header.Get("Content-Disposition"), "attachment; filename=\"archive-") {
+		t.Errorf("expected Content-Disposition attachment, got %q", resp.Header.Get("Content-Disposition"))
+	}
+
+	// 2. Error case: No files
+	formEmpty := url.Values{}
+	req = httptest.NewRequest(http.MethodPost, "/download-zip", strings.NewReader(formEmpty.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ctx.DownloadZipHandler(w, req)
+	if w.Result().StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status BadRequest for no files, got %v", w.Result().StatusCode)
+	}
+
+	// 3. Error case: Traversal
+	formTraversal := url.Values{}
+	formTraversal.Add("path", "")
+	formTraversal.Add("files", "../somefile.txt")
+	req = httptest.NewRequest(http.MethodPost, "/download-zip", strings.NewReader(formTraversal.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ctx.DownloadZipHandler(w, req)
+	if w.Result().StatusCode != http.StatusForbidden {
+		t.Errorf("expected status Forbidden for traversal, got %v", w.Result().StatusCode)
+	}
+
+	// 4. Error case: Not found
+	formNotFound := url.Values{}
+	formNotFound.Add("path", "")
+	formNotFound.Add("files", "nonexistent.txt")
+	req = httptest.NewRequest(http.MethodPost, "/download-zip", strings.NewReader(formNotFound.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ctx.DownloadZipHandler(w, req)
 	if w.Result().StatusCode != http.StatusNotFound {
 		t.Errorf("expected status NotFound, got %v", w.Result().StatusCode)
 	}

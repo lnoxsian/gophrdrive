@@ -1,5 +1,5 @@
 # Go Single-Binary File Server
-Version: 0.0.2
+Version: 0.0.4
 Status: Design Specification
 
 ---
@@ -216,7 +216,7 @@ OS
 # Package Layout
 
 ```text
-cmd/fileserver/
+cmd/gophrdrv/
     main.go
 
 internal/server/
@@ -569,7 +569,7 @@ annual-report.docx
 ## CLI Flags
 
 ```bash
-fileserver \
+gophrdrv \
   --root /data \
   --port 8080
 ```
@@ -823,13 +823,13 @@ Production:
 go build \
   -trimpath \
   -ldflags="-s -w" \
-  -o fileserver
+  -o gophrdrv
 ```
 
 Result:
 
 ```text
-fileserver
+gophrdrv
 ```
 
 Single executable.

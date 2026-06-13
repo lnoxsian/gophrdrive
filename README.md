@@ -42,10 +42,10 @@ If you do not have `just` installed, you can build GOPHRDRV using standard Go to
 
 ```bash
 # Build the default development binary
-go build -o fileserver ./cmd/fileserver
+go build -o gophrdrv ./cmd/gophrdrv
 
 # Build the optimized production binary (static, stripped, path-trimmed)
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o fileserver ./cmd/fileserver
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
 ```
 
 ### Running the Server
@@ -53,10 +53,10 @@ Launch the server by pointing it to a root directory:
 
 ```bash
 # Run server serving the current directory on default port 8080
-./fileserver --root="."
+./gophrdrv --root="."
 
 # Run server with custom port, host, and max upload body size limits
-./fileserver --host="127.0.0.1" --port=9090 --root="/path/to/data" --max-upload="500MB"
+./gophrdrv --host="127.0.0.1" --port=9090 --root="/path/to/data" --max-upload="500MB"
 ```
 
 #### CLI Command Flags:
@@ -111,7 +111,7 @@ Launch the server by pointing it to a root directory:
 ### Module Directory Structure
 ```text
 cmd/
- └── fileserver/
+ └── gophrdrv/
       └── main.go           # Application entrypoint
 internal/
  ├── config/
@@ -139,8 +139,8 @@ internal/
 
 ### In-Depth Module Documentation
 
-#### 1. `cmd/fileserver`
-* **File**: `cmd/fileserver/main.go`
+#### 1. `cmd/gophrdrv`
+* **File**: `cmd/gophrdrv/main.go`
 * **Purpose**: Orchestrates the bootstrap of the application. It parses configuration flags using `internal/config`, instantiates a server context using `internal/server`, and initializes execution.
 
 #### 2. `internal/config`
@@ -208,7 +208,7 @@ just test-coverage
 # Format and analyze the codebase using go fmt and go vet
 just lint
 
-# Run the compiled fileserver locally (builds automatically)
+# Run the compiled gophrdrv locally (builds automatically)
 just run
 
 # Clean build binaries and coverage reports
