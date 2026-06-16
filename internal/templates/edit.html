@@ -307,37 +307,87 @@
         }
 
         /* Mobile responsive styles */
+        .btn-text-mobile {
+            display: none;
+        }
+
+        /* Responsive styles */
+        .breadcrumbs-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            overflow: hidden;
+        }
+
+        .meta-group {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
                 gap: 1rem;
             }
-            header {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1rem;
-                text-align: center;
-            }
-            .toolbar {
+            header.toolbar {
                 flex-direction: column;
                 align-items: stretch;
                 padding: 1rem;
+                gap: 1rem;
+            }
+            .breadcrumbs-container {
+                width: 100%;
+            }
+            .header-spacer {
+                display: none;
+            }
+            .tool-group {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+                width: 100%;
             }
             .btn {
                 justify-content: center;
                 width: 100%;
             }
+            .btn-text-full {
+                display: none !important;
+            }
+            .btn-text-mobile {
+                display: inline !important;
+            }
+            .meta-group {
+                width: 100%;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .meta-group .btn {
+                flex-grow: 1;
+            }
             .toggle-group {
                 margin-left: 0;
                 justify-content: center;
-                width: 100%;
-                margin-top: 0.5rem;
+                margin-top: 0;
             }
             .file-meta-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 0.5rem;
                 padding: 1rem;
+            }
+            .file-meta-item {
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+                font-size: 0.8125rem;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+                padding-bottom: 0.25rem;
+            }
+            .file-meta-item:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
             }
             .editor-textarea {
                 min-height: 45vh;
@@ -348,7 +398,7 @@
 <body>
     <!-- Merged Toolbar containing Title, Path, Actions, Theme/Status -->
     <header class="toolbar">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="breadcrumbs-container">
             <nav class="breadcrumbs" aria-label="Breadcrumb">
                 <a href="/browse?path={{.ParentPath}}" class="logo-text" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center;">GOPHRDRV</a>
                 <span class="breadcrumb-separator">/</span>
@@ -356,29 +406,33 @@
             </nav>
         </div>
         
-        <div style="flex-grow: 1;"></div>
+        <div class="header-spacer" style="flex-grow: 1;"></div>
 
-        <a href="/browse?path={{.ParentPath}}" class="btn" id="backBtn">
-            Back to Folder
-        </a>
+        <div class="tool-group">
+            <a href="/browse?path={{.ParentPath}}" class="btn" id="backBtn">
+                <span class="btn-text-full">Back to Folder</span><span class="btn-text-mobile">Back</span>
+            </a>
 
-        <a href="/view?file={{.FilePath}}" class="btn">
-            View Text
-        </a>
-        
-        <button class="btn btn-primary" onclick="saveFile()">
-            Save File (Ctrl+S)
-        </button>
-
-        <div class="toggle-group" style="margin-left: 0;">
-            <label class="toggle-container" for="wrapToggle">
-                <span>Wrap Lines</span>
-                <input type="checkbox" id="wrapToggle" class="checkbox-switch" onchange="toggleWrap(this)">
-            </label>
+            <a href="/view?file={{.FilePath}}" class="btn">
+                <span class="btn-text-full">View Text</span><span class="btn-text-mobile">View</span>
+            </a>
+            
+            <button class="btn btn-primary" onclick="saveFile()">
+                <span class="btn-text-full">Save File (Ctrl+S)</span><span class="btn-text-mobile">Save</span>
+            </button>
         </div>
 
-        <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
-        <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[EDITOR]</span>
+        <div class="meta-group">
+            <div class="toggle-group" style="margin-left: 0;">
+                <label class="toggle-container" for="wrapToggle">
+                    <span>Wrap</span>
+                    <input type="checkbox" id="wrapToggle" class="checkbox-switch" onchange="toggleWrap(this)">
+                </label>
+            </div>
+
+            <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
+            <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[EDITOR]</span>
+        </div>
     </header>
 
     <div class="container">

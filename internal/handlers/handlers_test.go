@@ -202,13 +202,13 @@ func TestUploadHandler(t *testing.T) {
 	body = &bytes.Buffer{}
 	writer = multipart.NewWriter(body)
 	_ = writer.WriteField("path", "")
-	
+
 	part1, _ := writer.CreateFormFile("files", "upload1.txt")
 	_, _ = part1.Write([]byte("first file content"))
-	
+
 	part2, _ := writer.CreateFormFile("files", "upload2.txt")
 	_, _ = part2.Write([]byte("second file content"))
-	
+
 	_ = writer.Close()
 
 	req = httptest.NewRequest(http.MethodPost, "/upload", body)

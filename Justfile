@@ -1,5 +1,6 @@
 # Justfile for GOPHRDRV (Go Single-Binary File Server)
 
+# List all available recipes
 default:
     @just --list
 
@@ -27,7 +28,7 @@ run root="." port="8080" host="0.0.0.0" max-upload="100MB": build
     ./gophrdrv --root "{{root}}" --port {{port}} --host {{host}} --max-upload "{{max-upload}}"
 
 # Run gophrdrv in help mode to show usage flags
-help: build
+help-bin: build
     ./gophrdrv --help
 
 # Clean build artifacts and coverage reports
