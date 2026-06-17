@@ -25,15 +25,15 @@ lint:
 
 # Run the compiled gophrdrv binary
 run root="." port="8080" host="0.0.0.0" max-upload="100MB": build
-    ./gophrdrv --root "{{root}}" --port {{port}} --host {{host}} --max-upload "{{max-upload}}"
+    ./bin/gophrdrv --root "{{root}}" --port {{port}} --host {{host}} --max-upload "{{max-upload}}"
 
 # Run gophrdrv in help mode to show usage flags
 help-bin: build
-    ./gophrdrv --help
+    ./bin/gophrdrv --help
 
 # Clean build artifacts and coverage reports
 clean:
-    rm -f gophrdrv coverage.out coverage.html
+    rm -f ./bin/gophrdrv coverage.out coverage.html
 
 # Update/bump the application version. Bumps the patch version if no argument is specified (e.g. just update-version [1.0.2])
 update-version version="":
