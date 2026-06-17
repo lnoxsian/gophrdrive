@@ -1,6 +1,6 @@
 # GOPHRDRV Binaries
-gophrdrv
-gophrdrv.exe
+bin/gophrdrv
+bin/gophrdrv.exe
 
 # Go Test and Coverage files
 *.out

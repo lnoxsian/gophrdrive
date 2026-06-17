@@ -6,7 +6,7 @@ default:
 
 # Build the production single-binary executable
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv ./cmd/gophrdrv
 
 # Run all unit tests
 test:
