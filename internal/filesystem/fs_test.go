@@ -150,3 +150,59 @@ func TestListDirectoryAndSearch(t *testing.T) {
 		t.Errorf("unexpected search result: %+v", results[0])
 	}
 }
+
+func TestMatchesFZF(t *testing.T) {
+	tests := []struct {
+		target   string
+		query    string
+		expected bool
+	}{
+		// Basic exact and empty
+		{"readme.md", "", true},
+		{"readme.md", "   ", true},
+		// Case insensitive fuzzy match
+		{"readme.md", "rmd", true},
+		{"readme.md", "RMD", true},
+		{"readme.md", "read", true},
+		{"readme.md", "md", true},
+		{"readme.md", "readmd", true},
+		{"readme.md", "read.md", true},
+		{"readme.md", "readmx", false},
+		// Exact match using '
+		{"readme.md", "'readme", true},
+		{"readme.md", "'read.md", false},
+		{"readme.md", "'readmx", false},
+		// Prefix match using ^
+		{"readme.md", "^readme", true},
+		{"readme.md", "^read", true},
+		{"readme.md", "^me", false},
+		// Suffix match using $
+		{"readme.md", "md$", true},
+		{"readme.md", ".md$", true},
+		{"readme.md", "readme$", false},
+		// Inverse matches using !
+		{"readme.md", "!notes", true},
+		{"readme.md", "!readme", false},
+		{"readme.md", "!^notes", true},
+		{"readme.md", "!^readme", false},
+		{"readme.md", "!notes$", true},
+		{"readme.md", "!.md$", false},
+		// Multi-term logic (AND)
+		{"docs/report.pdf", "docs pdf", true},
+		{"docs/report.pdf", "docs !report", false},
+		{"docs/report.pdf", "^docs .pdf$", true},
+		{"docs/report.pdf", "^docs .txt$", false},
+		// Unicode
+		{"résumé.txt", "résumé", true},
+		{"résumé.txt", "resume", false}, // unicode fuzzy match is case sensitive but rune exact
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.target+"_vs_"+tc.query, func(t *testing.T) {
+			got := MatchesFZF(tc.target, tc.query)
+			if got != tc.expected {
+				t.Errorf("MatchesFZF(%q, %q) = %v; want %v", tc.target, tc.query, got, tc.expected)
+			}
+		})
+	}
+}

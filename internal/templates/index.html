@@ -1002,15 +1002,15 @@
         const currentPath = "{{.CurrentPath}}";
 
         function filterTableRows() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
+            const query = document.getElementById('searchInput').value;
             const rows = document.querySelectorAll('.file-row');
             rows.forEach(row => {
                 const nameLink = row.querySelector('.file-name-text');
                 if (nameLink) {
-                    const name = nameLink.textContent.toLowerCase();
+                    const name = nameLink.textContent;
                     // Strip leading slash if any (folders have it, files don't)
                     const normalizedName = name.startsWith('/') ? name.substring(1) : name;
-                    if (normalizedName.includes(query) || name.includes(query)) {
+                    if (matchesFZF(name, query) || matchesFZF(normalizedName, query)) {
                         row.style.display = '';
                     } else {
                         row.style.display = 'none';
@@ -1020,6 +1020,59 @@
                 }
             });
             updateSelectionState();
+        }
+
+        function matchesFZF(target, query) {
+            query = query.trim();
+            if (!query) return true;
+
+            const targetLower = target.toLowerCase();
+            const terms = query.toLowerCase().split(/\s+/);
+
+            for (const term of terms) {
+                if (!term) continue;
+
+                let matched = false;
+                if (term.startsWith('!')) {
+                    const subterm = term.slice(1);
+                    if (!subterm) continue;
+
+                    if (subterm.startsWith('^')) {
+                        matched = !targetLower.startsWith(subterm.slice(1));
+                    } else if (subterm.endsWith('$')) {
+                        matched = !targetLower.endsWith(subterm.slice(0, -1));
+                    } else {
+                        matched = !targetLower.includes(subterm);
+                    }
+                } else {
+                    if (term.startsWith("'")) {
+                        matched = targetLower.includes(term.slice(1));
+                    } else if (term.startsWith('^')) {
+                        matched = targetLower.startsWith(term.slice(1));
+                    } else if (term.endsWith('$')) {
+                        matched = targetLower.endsWith(term.slice(0, -1));
+                    } else {
+                        matched = fuzzyMatchLower(targetLower, term);
+                    }
+                }
+
+                if (!matched) return false;
+            }
+
+            return true;
+        }
+
+        function fuzzyMatchLower(target, term) {
+            let tIdx = 0;
+            for (let i = 0; i < term.length; i++) {
+                const char = term[i];
+                const foundIdx = target.indexOf(char, tIdx);
+                if (foundIdx === -1) {
+                    return false;
+                }
+                tIdx = foundIdx + 1;
+            }
+            return true;
         }
 
         function showToast(title, message, type = 'success') {

@@ -35,7 +35,7 @@ help-bin: build
 clean:
     rm -f ./bin/gophrdrv coverage.out coverage.html
 
-# Update/bump the application version. Bumps the patch version if no argument is specified (e.g. just update-version [1.0.2])
+# Update/bump the application version. Displays the current version and prompts for a new version (defaults to next patch version).
 update-version version="":
 	#!/usr/bin/env bash
 	set -euo pipefail
@@ -43,7 +43,10 @@ update-version version="":
 	if [ -z "$TARGET_VERSION" ]; then
 		CURRENT_VERSION=$(grep -o 'var Version = "[^"]*"' internal/version/version.go | cut -d'"' -f2)
 		IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-		TARGET_VERSION="$major.$minor.$((patch + 1))"
+		DEFAULT_VERSION="$major.$minor.$((patch + 1))"
+		echo "Current version: $CURRENT_VERSION"
+		read -r -p "Enter new version [$DEFAULT_VERSION]: " input
+		TARGET_VERSION="${input:-$DEFAULT_VERSION}"
 	fi
 	sed -i "s/var Version = \"[^\"]*\"/var Version = \"$TARGET_VERSION\"/" internal/version/version.go
 	sed -i "s/Version: [0-9.]*/Version: $TARGET_VERSION/" Plan.md

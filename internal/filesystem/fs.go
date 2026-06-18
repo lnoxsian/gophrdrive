@@ -186,7 +186,6 @@ func SearchFiles(root, relPath, query string) ([]FileInfo, error) {
 	}
 
 	var results []FileInfo
-	queryLower := strings.ToLower(query)
 
 	err = filepath.WalkDir(safeStartPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -206,7 +205,7 @@ func SearchFiles(root, relPath, query string) ([]FileInfo, error) {
 		}
 
 		name := d.Name()
-		if strings.Contains(strings.ToLower(name), queryLower) {
+		if MatchesFZF(name, query) || MatchesFZF(rel, query) {
 			info, err := d.Info()
 			if err != nil {
 				return nil
@@ -261,4 +260,80 @@ func SearchFiles(root, relPath, query string) ([]FileInfo, error) {
 	sortFunc(files)
 
 	return append(dirs, files...), nil
+}
+
+// MatchesFZF checks if the target string matches the fzf-like query.
+func MatchesFZF(target, query string) bool {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return true
+	}
+
+	targetLower := strings.ToLower(target)
+	terms := strings.Fields(strings.ToLower(query))
+
+	for _, term := range terms {
+		if term == "" {
+			continue
+		}
+
+		matched := false
+		if strings.HasPrefix(term, "!") {
+			// Inverse match
+			subterm := term[1:]
+			if subterm == "" {
+				// solitary ! matches nothing or is ignored.
+				continue
+			}
+			if strings.HasPrefix(subterm, "^") {
+				matched = !strings.HasPrefix(targetLower, subterm[1:])
+			} else if strings.HasSuffix(subterm, "$") {
+				matched = !strings.HasSuffix(targetLower, subterm[:len(subterm)-1])
+			} else {
+				matched = !strings.Contains(targetLower, subterm)
+			}
+		} else {
+			// Positive match
+			if strings.HasPrefix(term, "'") {
+				// Exact match
+				matched = strings.Contains(targetLower, term[1:])
+			} else if strings.HasPrefix(term, "^") {
+				// Prefix match
+				matched = strings.HasPrefix(targetLower, term[1:])
+			} else if strings.HasSuffix(term, "$") {
+				// Suffix match
+				matched = strings.HasSuffix(targetLower, term[:len(term)-1])
+			} else {
+				// Fuzzy match
+				matched = fuzzyMatchLower(targetLower, term)
+			}
+		}
+
+		// Since all terms are ANDed, if any term fails to match, the entire query fails.
+		if !matched {
+			return false
+		}
+	}
+
+	return true
+}
+
+func fuzzyMatchLower(target, term string) bool {
+	tIdx := 0
+	targetRunes := []rune(target)
+	for _, r := range term {
+		found := false
+		for tIdx < len(targetRunes) {
+			tr := targetRunes[tIdx]
+			tIdx++
+			if tr == r {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

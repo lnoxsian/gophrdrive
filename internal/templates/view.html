@@ -239,31 +239,51 @@
             position: relative;
         }
 
-        .line-numbers {
-            padding: 0.75rem 0.5rem 1.5rem 1rem;
-            text-align: right;
+        .line-number {
             color: var(--text-muted);
             border-right: 1px solid var(--border-color);
             user-select: none;
             background: var(--bg-tertiary);
             min-width: 48px;
+            text-align: right;
+            padding-right: 0.75rem;
+            padding-left: 1rem;
+            flex-shrink: 0;
             position: sticky;
             left: 0;
             z-index: 10;
         }
 
-        .line-number {
-            display: block;
+        .code-lines {
+            display: flex;
+            flex-direction: column;
+            min-width: 100%;
+            width: max-content;
+            padding: 0.75rem 0 1.5rem 0;
         }
 
-        .code-content {
-            padding: 0.75rem 1rem 1.5rem 1rem;
+        .code-container.wrap-lines .code-lines {
+            width: 100%;
+        }
+
+        .code-line {
+            display: flex;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .code-text {
+            margin: 0;
+            padding: 0 1rem;
             white-space: pre;
             color: var(--text-primary);
             flex-grow: 1;
+            font-family: inherit;
+            font-size: inherit;
+            min-height: 1.6em; /* Prevent collapsing on empty lines */
         }
 
-        .code-content.wrap-lines {
+        .code-container.wrap-lines .code-text {
             white-space: pre-wrap;
             word-break: break-all;
         }
@@ -393,8 +413,12 @@
                 border-bottom: none;
                 padding-bottom: 0;
             }
-            .line-numbers {
+            .line-number {
                 display: none !important;
+            }
+            .code-text {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
             }
         }
     </style>
@@ -462,8 +486,8 @@
             </div>
             
             <div class="code-container">
-                <div class="line-numbers" id="lineNumbers"></div>
-                <pre class="code-content" id="codeContent">{{.Content}}</pre>
+                <pre id="codeContent" style="display: none;">{{.Content}}</pre>
+                <div class="code-lines" id="codeLines"></div>
             </div>
         </main>
     </div>
@@ -475,29 +499,40 @@
         // Set up line numbers dynamically
         window.addEventListener('DOMContentLoaded', () => {
             const codeEl = document.getElementById('codeContent');
-            const linesEl = document.getElementById('lineNumbers');
+            const linesEl = document.getElementById('codeLines');
             
             const lines = codeEl.textContent.split(/\r?\n/);
             if (lines.length > 1 && lines[lines.length - 1] === '') {
                 lines.pop();
             }
 
-            let numContent = '';
-            for (let i = 1; i <= lines.length; i++) {
-                numContent += `<span class="line-number">${i}</span>`;
+            let html = '';
+            for (let i = 0; i < lines.length; i++) {
+                const lineNum = i + 1;
+                const escapedLine = escapeHtml(lines[i]);
+                html += `<div class="code-line"><span class="line-number">${lineNum}</span><pre class="code-text">${escapedLine}</pre></div>`;
             }
-            linesEl.innerHTML = numContent;
+            linesEl.innerHTML = html;
 
             // Sync theme toggle label
             updateThemeButtonLabel();
         });
 
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function toggleWrap(checkbox) {
-            const codeEl = document.getElementById('codeContent');
+            const container = document.querySelector('.code-container');
             if (checkbox.checked) {
-                codeEl.classList.add('wrap-lines');
+                container.classList.add('wrap-lines');
             } else {
-                codeEl.classList.remove('wrap-lines');
+                container.classList.remove('wrap-lines');
             }
         }
 
