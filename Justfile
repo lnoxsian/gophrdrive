@@ -50,4 +50,5 @@ update-version version="":
 	fi
 	sed -i "s/var Version = \"[^\"]*\"/var Version = \"$TARGET_VERSION\"/" internal/version/version.go
 	sed -i "s/Version: [0-9.]*/Version: $TARGET_VERSION/" Plan.md
+	echo "$TARGET_VERSION" > VERSION
 	echo "Version updated to $TARGET_VERSION"
