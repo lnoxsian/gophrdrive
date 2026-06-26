@@ -1,5 +1,5 @@
 # Go Single-Binary File Server 
-Version: 0.0.5
+Version: 0.0.7
 Status: Design Specification
 
 ---

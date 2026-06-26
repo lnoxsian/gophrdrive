@@ -99,6 +99,7 @@ func (h *HandlerContext) EditHandler(w http.ResponseWriter, r *http.Request) {
 		Content:    string(contentBytes),
 		SizeStr:    templates.FormatSize(info.Size()),
 		ModTimeStr: templates.FormatTime(info.ModTime()),
+		IsPrivate:  h.Cfg.Private,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

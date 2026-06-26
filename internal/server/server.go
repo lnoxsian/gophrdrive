@@ -14,6 +14,7 @@ import (
 
 	"github.com/lnoxsian/gophrdrv/internal/config"
 	"github.com/lnoxsian/gophrdrv/internal/handlers"
+	"github.com/lnoxsian/gophrdrv/internal/templates"
 )
 
 type gzipResponseWriter struct {
@@ -59,6 +60,46 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func AuthMiddleware(ctx *handlers.HandlerContext, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !ctx.Cfg.Private {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Allow access to /login endpoint
+		if r.URL.Path == "/login" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check authentication
+		cookie, err := r.Cookie("gophrdrv_session")
+		if err == nil && cookie.Value == ctx.SessionToken {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// If not authenticated, determine action
+		// For page loads (GET / or /browse, /view, /edit), show the lock screen
+		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/browse" || r.URL.Path == "/view" || r.URL.Path == "/edit") {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			data := map[string]interface{}{
+				"Redirect": r.URL.RequestURI(),
+				"Error":    "",
+			}
+			if err := templates.ExecuteTemplate(w, "lock.html", data); err != nil {
+				ctx.LogError("Failed to render lock screen: %v", err)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			}
+			return
+		}
+
+		// For other requests (POSTs, downloads, APIs), return 401 Unauthorized
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	})
+}
+
 type Server struct {
 	cfg *config.Config
 }
@@ -74,6 +115,8 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", ctx.BrowseHandler)
 	mux.HandleFunc("/browse", ctx.BrowseHandler)
+	mux.HandleFunc("/login", ctx.LoginHandler)
+	mux.HandleFunc("/logout", ctx.LogoutHandler)
 	mux.HandleFunc("/download", ctx.DownloadHandler)
 	mux.HandleFunc("/download-zip", ctx.DownloadZipHandler)
 	mux.HandleFunc("/view", ctx.ViewHandler)
@@ -87,7 +130,7 @@ func (s *Server) Start() error {
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      GzipMiddleware(mux),
+		Handler:      AuthMiddleware(ctx, GzipMiddleware(mux)),
 		ReadTimeout:  s.cfg.ReadTimeout,
 		WriteTimeout: s.cfg.WriteTimeout,
 	}

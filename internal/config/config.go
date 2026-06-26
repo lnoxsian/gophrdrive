@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bufio"
+	"crypto/rand"
 	"flag"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -10,6 +13,7 @@ import (
 	"time"
 
 	"github.com/lnoxsian/gophrdrv/internal/version"
+	"golang.org/x/term"
 )
 
 type Config struct {
@@ -19,6 +23,8 @@ type Config struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	MaxUpload    int64 // in bytes
+	Private      bool
+	Password     string
 }
 
 // LoadEnv loads environment variables from a .env file if it exists.
@@ -85,6 +91,8 @@ func ParseConfig() (*Config, error) {
 	readTimeoutFlag := flag.Duration("read-timeout", 30*time.Second, "Read timeout duration")
 	writeTimeoutFlag := flag.Duration("write-timeout", 30*time.Second, "Write timeout duration")
 	maxUploadFlag := flag.String("max-upload", "100MB", "Maximum upload size (e.g. 100MB, 1GB)")
+	privateFlag := flag.Bool("private", false, "Enable private mode with password protection")
+	randomPassFlag := flag.Bool("r", false, "Generate a random 6-digit password for private mode")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	vFlag := flag.Bool("v", false, "Print version and exit")
 
@@ -200,6 +208,78 @@ func ParseConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid max-upload value: %w", err)
 	}
 
+	var private bool
+	if setFlags["private"] {
+		private = *privateFlag
+	} else if envPrivate := os.Getenv("GOPHRDRV_PRIVATE"); envPrivate != "" {
+		p, err := strconv.ParseBool(envPrivate)
+		if err == nil {
+			private = p
+		}
+	} else {
+		private = *privateFlag
+	}
+
+	var password string
+	if private {
+		// Check if we should generate a random password
+		var generateRandom bool
+		if setFlags["r"] {
+			generateRandom = *randomPassFlag
+		} else if envRandom := os.Getenv("GOPHRDRV_RANDOM_PASSWORD"); envRandom != "" {
+			r, err := strconv.ParseBool(envRandom)
+			if err == nil {
+				generateRandom = r
+			}
+		} else {
+			generateRandom = *randomPassFlag
+		}
+
+		if generateRandom {
+			// Generate 6 random digits
+			var digits strings.Builder
+			for i := 0; i < 6; i++ {
+				n, err := rand.Int(rand.Reader, big.NewInt(10))
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate random password: %w", err)
+				}
+				digits.WriteString(n.String())
+			}
+			password = digits.String()
+
+			// Print the generated password in a clear console box
+			fmt.Println("==================================================")
+			fmt.Println("  GOPHRDRV PRIVATE MODE ENABLED")
+			fmt.Printf("  Your generated unlock password: %s\n", password)
+			fmt.Println("==================================================")
+		} else if envPassword := os.Getenv("GOPHRDRV_PASSWORD"); envPassword != "" {
+			password = envPassword
+		} else {
+			fd := int(os.Stdin.Fd())
+			if term.IsTerminal(fd) {
+				fmt.Print("Enter password for private mode: ")
+				bytePassword, err := term.ReadPassword(fd)
+				fmt.Println() // Print a newline since ReadPassword doesn't print one
+				if err != nil {
+					return nil, fmt.Errorf("failed to read password: %w", err)
+				}
+				password = string(bytePassword)
+			} else {
+				// Fallback if not a terminal (e.g., standard input is piped/redirected)
+				reader := bufio.NewReader(os.Stdin)
+				p, err := reader.ReadString('\n')
+				if err != nil {
+					return nil, fmt.Errorf("failed to read password from non-terminal: %w", err)
+				}
+				password = p
+			}
+			password = strings.TrimRight(password, "\r\n")
+			if password == "" {
+				return nil, fmt.Errorf("password cannot be empty in private mode")
+			}
+		}
+	}
+
 	return &Config{
 		Root:         absRoot,
 		Port:         port,
@@ -207,6 +287,8 @@ func ParseConfig() (*Config, error) {
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		MaxUpload:    maxUploadBytes,
+		Private:      private,
+		Password:     password,
 	}, nil
 }
 

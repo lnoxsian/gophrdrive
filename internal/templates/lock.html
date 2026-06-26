@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lock Screen - GOPHRDRV</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22black%22/><text x=%2250%%22 y=%2250%%22 font-size=%2260%22 font-family=%22monospace%22 font-weight=%22bold%22 fill=%22white%22 dominant-baseline=%22central%22 text-anchor=%22middle%22>gd</text></svg>">
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --border-color: #222222;
+            --btn-bg: #ffffff;
+            --btn-text: #000000;
+            --danger: #ff3333;
+        }
+
+        :root.light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9f9f9;
+            --bg-tertiary: #eeeeee;
+            --text-primary: #000000;
+            --text-secondary: #555555;
+            --border-color: #dddddd;
+            --btn-bg: #000000;
+            --btn-text: #ffffff;
+            --danger: #cc0000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, input, button {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .lock-container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        :root.light-theme .lock-container {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+
+        .lock-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            user-select: none;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: -0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .form-control {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            outline: none;
+            text-align: center;
+            letter-spacing: 0.125em;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .form-control:focus {
+            border-color: var(--text-primary);
+        }
+
+        .btn {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-bg);
+            color: var(--btn-text);
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.8125rem;
+            text-align: center;
+            margin-top: 0.5rem;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .theme-toggle:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="lock-container">
+        <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">[DARK]</button>
+        <div class="lock-icon">🔒</div>
+        <h2 class="title">GOPHRDRV Private</h2>
+        <p class="subtitle">This file server is locked. Please enter the password to gain access.</p>
+        
+        <form style="width: 100%;" action="/login" method="POST">
+            <input type="hidden" name="redirect" value="{{.Redirect}}">
+            <div class="form-group">
+                <input type="password" name="password" class="form-control" placeholder="PASSWORD" required autofocus autocomplete="current-password">
+                <button type="submit" class="btn">Unlock</button>
+            </div>
+        </form>
+
+        {{if .Error}}
+        <div class="error-message">{{.Error}}</div>
+        {{end}}
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeToggleBtn');
+            if (html.classList.contains('light-theme')) {
+                html.classList.remove('light-theme');
+                localStorage.setItem('theme', 'dark');
+                btn.textContent = '[DARK]';
+            } else {
+                html.classList.add('light-theme');
+                localStorage.setItem('theme', 'light');
+                btn.textContent = '[LIGHT]';
+            }
+        }
+
+        // Initialize button text based on stored theme
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('themeToggleBtn');
+            if (document.documentElement.classList.contains('light-theme')) {
+                btn.textContent = '[LIGHT]';
+            } else {
+                btn.textContent = '[DARK]';
+            }
+        });
+    </script>
+</body>
+</html>

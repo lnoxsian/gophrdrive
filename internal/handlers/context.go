@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,7 +12,8 @@ import (
 )
 
 type HandlerContext struct {
-	Cfg *config.Config
+	Cfg          *config.Config
+	SessionToken string
 }
 
 type ErrorData struct {
@@ -20,7 +23,19 @@ type ErrorData struct {
 }
 
 func NewHandlerContext(cfg *config.Config) *HandlerContext {
-	return &HandlerContext{Cfg: cfg}
+	var sessionToken string
+	if cfg.Private {
+		bytes := make([]byte, 16)
+		if _, err := rand.Read(bytes); err == nil {
+			sessionToken = hex.EncodeToString(bytes)
+		} else {
+			sessionToken = fmt.Sprintf("fallback_token_%d", time.Now().UnixNano())
+		}
+	}
+	return &HandlerContext{
+		Cfg:          cfg,
+		SessionToken: sessionToken,
+	}
 }
 
 // Log logs messages in the format: timestamp level message

@@ -22,6 +22,7 @@ type BrowseData struct {
 	MaxUploadSizeStr string
 	EntriesCount     int
 	AppVersion       string
+	IsPrivate        bool
 }
 
 // BrowseHandler handles directory listings and search queries
@@ -101,6 +102,7 @@ func (h *HandlerContext) BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		MaxUploadSizeStr: maxUploadStr,
 		EntriesCount:     len(entries),
 		AppVersion:       version.Version,
+		IsPrivate:        h.Cfg.Private,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

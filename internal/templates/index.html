@@ -152,6 +152,7 @@
             padding: 0.5rem 1rem;
             font-size: 0.875rem;
             font-weight: 500;
+            line-height: inherit;
             border-radius: 0;
             border: 1px solid var(--border-color);
             background: var(--bg-tertiary);
@@ -775,7 +776,11 @@
         </form>
         <div class="meta-actions">
             <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" style="padding: 0.5rem 0.75rem;">[DARK]</button>
+            {{if .IsPrivate}}
+            <a href="/logout" class="btn" style="padding: 0.5rem 0.75rem;">[LOGOUT]</a>
+            {{else}}
             <span class="btn" style="pointer-events: none; padding: 0.5rem 0.75rem; border-color: transparent; background: transparent;">[LOCAL]</span>
+            {{end}}
         </div>
     </header>
 

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//go:embed index.html view.html error.html edit.html
+//go:embed index.html view.html error.html edit.html lock.html
 var TemplatesFS embed.FS
 
 var parsedTemplates *template.Template

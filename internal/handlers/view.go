@@ -18,6 +18,7 @@ type ViewData struct {
 	Content    string
 	SizeStr    string
 	ModTimeStr string
+	IsPrivate  bool
 }
 
 const maxViewableTextSize = 5 * 1024 * 1024 // 5MB limit for inline text viewing
@@ -111,6 +112,7 @@ func (h *HandlerContext) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		Content:    string(contentBytes),
 		SizeStr:    templates.FormatSize(info.Size()),
 		ModTimeStr: templates.FormatTime(info.ModTime()),
+		IsPrivate:  h.Cfg.Private,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
