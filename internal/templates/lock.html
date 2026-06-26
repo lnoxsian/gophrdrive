@@ -13,7 +13,7 @@
     <style>
         :root {
             --bg-primary: #000000;
-            --bg-secondary: #0a0a0a;
+            --bg-secondary: #000000;
             --bg-tertiary: #111111;
             --text-primary: #ffffff;
             --text-secondary: #aaaaaa;
@@ -25,7 +25,7 @@
 
         :root.light-theme {
             --bg-primary: #ffffff;
-            --bg-secondary: #f9f9f9;
+            --bg-secondary: #ffffff;
             --bg-tertiary: #eeeeee;
             --text-primary: #000000;
             --text-secondary: #555555;
@@ -65,25 +65,21 @@
             flex-direction: column;
             align-items: center;
             gap: 1.5rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             position: relative;
         }
 
-        :root.light-theme .lock-container {
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-        }
-
-        .lock-icon {
-            font-size: 3rem;
+        .logo-icon {
+            width: 3.5rem;
+            height: 3.5rem;
             margin-bottom: 0.5rem;
-            user-select: none;
-            animation: pulse 2s infinite ease-in-out;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        .logo-icon rect {
+            fill: var(--text-primary);
+        }
+
+        .logo-icon text {
+            fill: var(--bg-primary);
         }
 
         .title {
@@ -179,7 +175,10 @@
 <body>
     <div class="lock-container">
         <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">[DARK]</button>
-        <div class="lock-icon">🔒</div>
+        <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <rect width="100" height="100" />
+            <text x="50%" y="50%" font-size="60" font-family="monospace" font-weight="bold" dominant-baseline="central" text-anchor="middle">gd</text>
+        </svg>
         <h2 class="title">GOPHRDRV Private</h2>
         <p class="subtitle">This file server is locked. Please enter the password to gain access.</p>
         

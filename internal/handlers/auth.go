@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lnoxsian/gophrdrv/internal/templates"
@@ -41,17 +44,21 @@ func (h *HandlerContext) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	password := r.FormValue("password")
 	redirect := r.FormValue("redirect")
-	if redirect == "" {
+	if redirect == "" || !strings.HasPrefix(redirect, "/") || strings.HasPrefix(redirect, "//") {
 		redirect = "/"
 	}
 
-	if password == h.Cfg.Password {
+	passwdHash := sha256.Sum256([]byte(password))
+	cfgPasswdHash := sha256.Sum256([]byte(h.Cfg.Password))
+
+	if subtle.ConstantTimeCompare(passwdHash[:], cfgPasswdHash[:]) == 1 {
 		// Correct password - set session cookie
 		cookie := &http.Cookie{
 			Name:     "gophrdrv_session",
 			Value:    h.SessionToken,
 			Path:     "/",
 			HttpOnly: true,
+			Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
 			SameSite: http.SameSiteLaxMode,
 			Expires:  time.Now().Add(24 * time.Hour),
 		}
@@ -63,6 +70,7 @@ func (h *HandlerContext) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Incorrect password - render lock screen with error
 	h.LogError("Failed login attempt from %s", r.RemoteAddr)
+	time.Sleep(1 * time.Second) // Mitigate brute force attacks
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := map[string]interface{}{
 		"Redirect": redirect,

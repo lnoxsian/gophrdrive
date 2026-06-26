@@ -130,7 +130,7 @@ func (s *Server) Start() error {
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      AuthMiddleware(ctx, GzipMiddleware(mux)),
+		Handler:      GzipMiddleware(AuthMiddleware(ctx, mux)),
 		ReadTimeout:  s.cfg.ReadTimeout,
 		WriteTimeout: s.cfg.WriteTimeout,
 	}
