@@ -31,22 +31,22 @@ jobs:
           
           # Linux AMD64 (x86_64)
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-amd64.tar.gz gophrdrv
+          tar -czvf release-dist/gophrdrv-linux-amd64.tar.gz gophrdrv LICENSE
           rm gophrdrv
           
           # Linux i386 (x86 32-bit)
           CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-i386.tar.gz gophrdrv
+          tar -czvf release-dist/gophrdrv-linux-i386.tar.gz gophrdrv LICENSE
           rm gophrdrv
           
           # Linux ARM64 (64-bit ARM)
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-arm64.tar.gz gophrdrv
+          tar -czvf release-dist/gophrdrv-linux-arm64.tar.gz gophrdrv LICENSE
           rm gophrdrv
           
           # Linux ARM32 (32-bit ARM v7)
           CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-arm32.tar.gz gophrdrv
+          tar -czvf release-dist/gophrdrv-linux-arm32.tar.gz gophrdrv LICENSE
           rm gophrdrv
 
       - name: Generate Checksums
