@@ -64,9 +64,9 @@ Requirements:
 - No NodeJS
 - No npm
 - No Docker requirement
-- No external packages
+- Minimal external packages (only rsc.io/qr for QR generation)
 
-Only Go standard library:
+Only Go standard library (with rsc.io/qr):
 
 ```go
 net/http
@@ -82,6 +82,7 @@ strings
 context
 sync
 encoding/json
+rsc.io/qr
 ```
 
 ---

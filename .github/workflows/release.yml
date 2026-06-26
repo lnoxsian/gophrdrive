@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'The version tag for this release (e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build binaries
+        run: |
+          mkdir -p release-dist
+          
+          # Linux AMD64 (x86_64)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o release-dist/gophrdrv-linux-amd64 ./cmd/gophrdrv
+          
+          # Linux i386 (x86 32-bit)
+          CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" -o release-dist/gophrdrv-linux-i386 ./cmd/gophrdrv
+          
+          # Linux ARM64 (64-bit ARM)
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o release-dist/gophrdrv-linux-arm64 ./cmd/gophrdrv
+          
+          # Linux ARM32 (32-bit ARM v7)
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o release-dist/gophrdrv-linux-arm32 ./cmd/gophrdrv
+
+      - name: Generate Checksums
+        run: |
+          cd release-dist
+          sha256sum gophrdrv-linux-* > checksums.txt
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          name: Release ${{ inputs.tag_name }}
+          files: |
+            release-dist/gophrdrv-linux-*
+            release-dist/checksums.txt
+          generate_release_notes: true

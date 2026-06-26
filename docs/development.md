@@ -72,7 +72,7 @@ go tool cover -html=coverage.out -o coverage.html
 To compile the application into a highly-optimized single executable:
 
 ```bash
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv ./cmd/gophrdrv
 ```
 
 ### Compilation Flag Details:

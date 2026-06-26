@@ -52,12 +52,15 @@ Manages TCP listeners and routes requests.
 * **Main Methods**:
   * `NewServer(cfg *config.Config) *Server`: Initializes the configuration parameters.
   * `Start() error`: Boots the HTTP server. Instantiates router endpoints, binds the TCP address, monitors runtime signals (`SIGINT`, `SIGTERM`), and calls `Shutdown()` to drain active requests gracefully.
+  * `printQRCode(displayHost string)`: Generates and prints an ANSI terminal QR code of the server URL when the `-qr` command-line flag is set.
+  * `getPreferredIP() string`: Dynamically resolves the preferred local network interface IP (via outbound UDP route resolution) to ensure the QR code encodes a routable network URL.
 
 ### 2.2 Config Module (`internal/config`)
 Manages parsing configurations.
-* **Component**: `Config` struct.
+* **Component**: `Config` struct (defines parameters like `Root`, `Port`, `Host`, `Private`, and `ShowQR`).
 * **Main Methods**:
   * `ParseSize(sizeStr string) (int64, error)`: Converts human-readable formats (e.g. `100MB`, `1.5GB`) into raw bytes.
+  * `ParseConfig() (*Config, error)`: Loads configuration from environment variables, CLI flags (including `-qr`, `-private`, and `-r`), and inputs.
 
 ### 2.3 Filesystem Module (`internal/filesystem`)
 Encapsulates low-level OS operations, ensuring security boundaries.

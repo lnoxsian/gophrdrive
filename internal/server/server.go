@@ -224,8 +224,7 @@ func (s *Server) printQRCode(displayHost string) {
 			if y < 0 || y >= code.Size || x < 0 || x >= code.Size {
 				fmt.Print(ansiWhite)
 			} else {
-				val := code.Bitmap[y*code.Stride+x]
-				if val == 1 {
+				if code.Black(x, y) {
 					fmt.Print(ansiBlack)
 				} else {
 					fmt.Print(ansiWhite)

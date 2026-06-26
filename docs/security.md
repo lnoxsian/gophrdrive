@@ -81,3 +81,15 @@ GOPHRDRV employs a double-barrier validation system to verify that binary conten
 2. **Content-Based Detection**:
    * For files with unrecognized extensions or extensionless configurations (like `LICENSE`, `Makefile`, `Justfile`), the server scans the first 512 bytes for a `NULL` byte (`0x00`).
    * A `NULL` byte is a definitive indicator of a compiled binary format. If detected, the server aborts rendering and returns `400 Bad Request` with `Binary File Detected`.
+
+---
+
+## 5. Private Mode & Access Protection
+
+GOPHRDRV can be configured in "Private Mode" (password-protected access). When active, the server enforces strict session authentication controls:
+
+1. **Timing Attack Prevention**: Password comparisons are done using SHA-256 hashing combined with `subtle.ConstantTimeCompare` in `internal/handlers/auth.go` to prevent password length and character leakage through execution timing analysis.
+2. **Brute-Force Delay Mitigation**: A 1-second delay is introduced on failed login attempts to significantly slow down automated brute-force scripts.
+3. **Open Redirect Protection**: The `redirect` parameter parsed upon login is sanitized to ensure it is a relative path (starting with `/` and not starting with `//`). This prevents phishing/redirection attacks to external domains.
+4. **Secure Session Cookies**: Session cookies are configured with `HttpOnly` (preventing access by client-side JavaScript) and dynamically apply the `Secure` flag if TLS is active or the request is forwarded over HTTPS (via `X-Forwarded-Proto`).
+
