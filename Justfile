@@ -35,6 +35,10 @@ help-bin: build
 clean:
     rm -f ./bin/gophrdrv coverage.out coverage.html
 
+# Install the compiled binary to /usr/bin/gophrdrv (requires sudo)
+install: build
+	sudo ./scripts/install.sh
+
 # Update/bump the application version. Displays the current version and prompts for a new version (defaults to next patch version).
 update-version version="":
 	#!/usr/bin/env bash

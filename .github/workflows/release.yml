@@ -29,25 +29,32 @@ jobs:
         run: |
           mkdir -p release-dist
           
-          # Linux AMD64 (x86_64)
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-amd64.tar.gz gophrdrv LICENSE
-          rm gophrdrv
+          # Helper to build and package files for a specific architecture
+          package_release() {
+            local arch=$1
+            local goarch=$2
+            local goarm=${3:-""}
+            
+            echo "Building for linux/$goarch $goarm..."
+            if [ -n "$goarm" ]; then
+              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch GOARM=$goarm go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+            else
+              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+            fi
+            
+            mkdir -p gophrdrv
+            mv gophrdrv gophrdrv/
+            cp LICENSE gophrdrv/
+            cp scripts/install.sh gophrdrv/
+            
+            tar -czvf release-dist/gophrdrv-linux-$arch.tar.gz gophrdrv
+            rm -rf gophrdrv
+          }
           
-          # Linux i386 (x86 32-bit)
-          CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-i386.tar.gz gophrdrv LICENSE
-          rm gophrdrv
-          
-          # Linux ARM64 (64-bit ARM)
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-arm64.tar.gz gophrdrv LICENSE
-          rm gophrdrv
-          
-          # Linux ARM32 (32-bit ARM v7)
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
-          tar -czvf release-dist/gophrdrv-linux-arm32.tar.gz gophrdrv LICENSE
-          rm gophrdrv
+          package_release "amd64" "amd64"
+          package_release "i386" "386"
+          package_release "arm64" "arm64"
+          package_release "arm32" "arm" "7"
 
       - name: Generate Checksums
         run: |
