@@ -66,6 +66,9 @@ Launch the server by pointing it to a root directory:
 * `--max-upload`: Maximum allowable file upload size (default: `100MB`). Supports formats like `10B`, `500KB`, `100MB`, `1GB`.
 * `--read-timeout`: Maximum duration for reading the entire request (default: `30s`).
 * `--write-timeout`: Maximum duration for writing the response (default: `30s`).
+* `--private`: Enable private mode with password protection (default: `false`).
+* `-r`: Generate a random 6-digit password for private mode (default: `false`).
+* `--qr`: Show QR code for the server URL in the terminal (default: `false`).
 
 ---
 

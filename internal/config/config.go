@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/lnoxsian/gophrdrv/internal/version"
-	"golang.org/x/term"
 )
 
 type Config struct {
@@ -25,6 +24,7 @@ type Config struct {
 	MaxUpload    int64 // in bytes
 	Private      bool
 	Password     string
+	ShowQR       bool
 }
 
 // LoadEnv loads environment variables from a .env file if it exists.
@@ -93,6 +93,7 @@ func ParseConfig() (*Config, error) {
 	maxUploadFlag := flag.String("max-upload", "100MB", "Maximum upload size (e.g. 100MB, 1GB)")
 	privateFlag := flag.Bool("private", false, "Enable private mode with password protection")
 	randomPassFlag := flag.Bool("r", false, "Generate a random 6-digit password for private mode")
+	qrFlag := flag.Bool("qr", false, "Show QR code for the server URL in the terminal")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	vFlag := flag.Bool("v", false, "Print version and exit")
 
@@ -255,29 +256,30 @@ func ParseConfig() (*Config, error) {
 		} else if envPassword := os.Getenv("GOPHRDRV_PASSWORD"); envPassword != "" {
 			password = envPassword
 		} else {
-			fd := int(os.Stdin.Fd())
-			if term.IsTerminal(fd) {
-				fmt.Print("Enter password for private mode: ")
-				bytePassword, err := term.ReadPassword(fd)
-				fmt.Println() // Print a newline since ReadPassword doesn't print one
-				if err != nil {
-					return nil, fmt.Errorf("failed to read password: %w", err)
-				}
-				password = string(bytePassword)
-			} else {
-				// Fallback if not a terminal (e.g., standard input is piped/redirected)
-				reader := bufio.NewReader(os.Stdin)
-				p, err := reader.ReadString('\n')
-				if err != nil {
-					return nil, fmt.Errorf("failed to read password from non-terminal: %w", err)
-				}
-				password = p
+			fmt.Print("Enter password for private mode: ")
+			reader := bufio.NewReader(os.Stdin)
+			p, err := reader.ReadString('\n')
+			if err != nil {
+				return nil, fmt.Errorf("failed to read password: %w", err)
 			}
+			password = p
 			password = strings.TrimRight(password, "\r\n")
 			if password == "" {
 				return nil, fmt.Errorf("password cannot be empty in private mode")
 			}
 		}
+	}
+
+	var showQR bool
+	if setFlags["qr"] {
+		showQR = *qrFlag
+	} else if envShowQR := os.Getenv("GOPHRDRV_SHOW_QR"); envShowQR != "" {
+		s, err := strconv.ParseBool(envShowQR)
+		if err == nil {
+			showQR = s
+		}
+	} else {
+		showQR = *qrFlag
 	}
 
 	return &Config{
@@ -289,6 +291,7 @@ func ParseConfig() (*Config, error) {
 		MaxUpload:    maxUploadBytes,
 		Private:      private,
 		Password:     password,
+		ShowQR:       showQR,
 	}, nil
 }
 

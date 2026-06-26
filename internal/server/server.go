@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/lnoxsian/gophrdrv/internal/config"
 	"github.com/lnoxsian/gophrdrv/internal/handlers"
 	"github.com/lnoxsian/gophrdrv/internal/templates"
+	"rsc.io/qr"
 )
 
 type gzipResponseWriter struct {
@@ -140,7 +142,14 @@ func (s *Server) Start() error {
 
 	// Start server in background goroutine
 	go func() {
-		ctx.LogInfo("starting file server on http://%s serving directory %s", addr, s.cfg.Root)
+		displayHost := s.cfg.Host
+		if displayHost == "" || displayHost == "0.0.0.0" || displayHost == "[::]" || displayHost == "127.0.0.1" || displayHost == "localhost" || displayHost == "::1" {
+			displayHost = getPreferredIP()
+		}
+		ctx.LogInfo("starting file server on http://%s:%d serving directory %s", displayHost, s.cfg.Port, s.cfg.Root)
+		if s.cfg.ShowQR {
+			s.printQRCode(displayHost)
+		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChan <- err
 		}
@@ -168,4 +177,62 @@ func (s *Server) Start() error {
 	}
 
 	return nil
+}
+
+func getPreferredIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		// Fallback to loopback or basic interface lookup
+		addrs, err := net.InterfaceAddrs()
+		if err == nil {
+			for _, address := range addrs {
+				if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+					if ipnet.IP.To4() != nil {
+						return ipnet.IP.String()
+					}
+				}
+			}
+		}
+		return "127.0.0.1"
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+}
+
+func (s *Server) printQRCode(displayHost string) {
+	url := fmt.Sprintf("http://%s:%d", displayHost, s.cfg.Port)
+
+	code, err := qr.Encode(url, qr.L)
+	if err != nil {
+		fmt.Printf("Failed to generate QR code: %v\n", err)
+		return
+	}
+
+	fmt.Println("\nScan the QR code below to open the server in your browser:")
+
+	const (
+		ansiReset = "\033[0m"
+		ansiBlack = "\033[40m  "
+		ansiWhite = "\033[47m  "
+		quietZone = 2
+	)
+
+	for y := -quietZone; y < code.Size+quietZone; y++ {
+		for x := -quietZone; x < code.Size+quietZone; x++ {
+			if y < 0 || y >= code.Size || x < 0 || x >= code.Size {
+				fmt.Print(ansiWhite)
+			} else {
+				val := code.Bitmap[y*code.Stride+x]
+				if val == 1 {
+					fmt.Print(ansiBlack)
+				} else {
+					fmt.Print(ansiWhite)
+				}
+			}
+		}
+		fmt.Print(ansiReset + "\n")
+	}
+	fmt.Println()
 }
