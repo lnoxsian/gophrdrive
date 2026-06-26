@@ -36,16 +36,21 @@ jobs:
             local goarm=${3:-""}
             
             echo "Building for linux/$goarch $goarm..."
+            
+            # Create a temporary directory to compile into (avoids filename collision)
+            mkdir -p gophrdrv-temp
+            
             if [ -n "$goarm" ]; then
-              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch GOARM=$goarm go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch GOARM=$goarm go build -trimpath -ldflags="-s -w" -o gophrdrv-temp/gophrdrv ./cmd/gophrdrv
             else
-              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -ldflags="-s -w" -o gophrdrv ./cmd/gophrdrv
+              CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -ldflags="-s -w" -o gophrdrv-temp/gophrdrv ./cmd/gophrdrv
             fi
             
-            mkdir -p gophrdrv
-            mv gophrdrv gophrdrv/
-            cp LICENSE gophrdrv/
-            cp scripts/install.sh gophrdrv/
+            cp LICENSE gophrdrv-temp/
+            cp scripts/install.sh gophrdrv-temp/
+            
+            # Rename the folder to target archive name
+            mv gophrdrv-temp gophrdrv
             
             tar -czvf release-dist/gophrdrv-linux-$arch.tar.gz gophrdrv
             rm -rf gophrdrv
