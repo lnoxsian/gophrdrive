@@ -48,6 +48,7 @@ jobs:
             
             cp LICENSE gophrdrv-temp/
             cp scripts/install.sh gophrdrv-temp/
+            cp -r completions gophrdrv-temp/
             
             # Rename the folder to target archive name
             mv gophrdrv-temp gophrdrv

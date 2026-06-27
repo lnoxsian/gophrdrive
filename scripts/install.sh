@@ -30,4 +30,42 @@ fi
 echo "Installing gophrdrv to /usr/bin/gophrdrv..."
 install -m 755 "$BINARY_SOURCE" /usr/bin/gophrdrv
 
+# Locate completions directory relative to the script directory
+COMPLETIONS_DIR=""
+if [ -d "$SCRIPT_DIR/completions" ]; then
+    COMPLETIONS_DIR="$SCRIPT_DIR/completions"
+elif [ -d "$SCRIPT_DIR/../completions" ]; then
+    COMPLETIONS_DIR="$SCRIPT_DIR/../completions"
+fi
+
+if [ -n "$COMPLETIONS_DIR" ]; then
+    # Install bash completions
+    BASH_COMPLETION_DIR="/usr/share/bash-completion/completions"
+    if [ -d "$BASH_COMPLETION_DIR" ]; then
+        echo "Installing bash completion to $BASH_COMPLETION_DIR/gophrdrv..."
+        install -m 644 "$COMPLETIONS_DIR/gophrdrv.bash" "$BASH_COMPLETION_DIR/gophrdrv"
+    else
+        BASH_FALLBACK_DIR="/etc/bash_completion.d"
+        if [ -d "$BASH_FALLBACK_DIR" ]; then
+            echo "Installing bash completion to $BASH_FALLBACK_DIR/gophrdrv..."
+            install -m 644 "$COMPLETIONS_DIR/gophrdrv.bash" "$BASH_FALLBACK_DIR/gophrdrv"
+        else
+            echo "Warning: Bash completion directory not found. Skipping bash completion install."
+        fi
+    fi
+
+    # Install fish completions
+    FISH_COMPLETION_DIR="/usr/share/fish/vendor_completions.d"
+    if [ -d "$FISH_COMPLETION_DIR" ]; then
+        echo "Installing fish completion to $FISH_COMPLETION_DIR/gophrdrv.fish..."
+        install -m 644 "$COMPLETIONS_DIR/gophrdrv.fish" "$FISH_COMPLETION_DIR/gophrdrv.fish"
+    else
+        echo "Warning: Fish completion directory not found. Skipping fish completion install."
+    fi
+else
+    echo "Warning: Completions directory not found. Skipping completion installation."
+fi
+
 echo "Installation completed successfully! You can now run 'gophrdrv' from anywhere."
+
+
