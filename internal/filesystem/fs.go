@@ -72,6 +72,22 @@ func IsValidFilename(name string) bool {
 	return true
 }
 
+// IsValidRelPath validates that every component of a relative path is a valid filename/dirname.
+func IsValidRelPath(relPath string) bool {
+	cleanRel := filepath.ToSlash(filepath.Clean(relPath))
+	cleanRel = strings.TrimPrefix(cleanRel, "./")
+	if cleanRel == "" || cleanRel == "." || cleanRel == ".." || strings.HasPrefix(cleanRel, "../") || strings.HasPrefix(cleanRel, "/") {
+		return false
+	}
+	parts := strings.Split(cleanRel, "/")
+	for _, part := range parts {
+		if !IsValidFilename(part) {
+			return false
+		}
+	}
+	return true
+}
+
 // IsBinaryFile checks the first 512 bytes of a file. If it contains a NULL byte, it is considered binary.
 func IsBinaryFile(filePath string) (bool, error) {
 	f, err := os.Open(filePath)

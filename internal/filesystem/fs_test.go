@@ -90,6 +90,37 @@ func TestIsValidFilename(t *testing.T) {
 	}
 }
 
+func TestIsValidRelPath(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"file.txt", true},
+		{"sub/file.txt", true},
+		{"a/b/c/d.txt", true},
+		{"folder_name-123/sub-dir/test.png", true},
+		{"", false},
+		{".", false},
+		{"..", false},
+		{"../file.txt", false},
+		{"a/../../file.txt", false},
+		{"/root/file.txt", false},
+		{"a/b:c/file.txt", false},
+		{"a/b*c/file.txt", false},
+		{"a/b?c/file.txt", false},
+		{"a/b\x00c/file.txt", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := IsValidRelPath(tc.input)
+			if got != tc.expected {
+				t.Errorf("for input %q: expected %t, got %t", tc.input, tc.expected, got)
+			}
+		})
+	}
+}
+
 func TestListDirectoryAndSearch(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "fs-list-test")
 	if err != nil {

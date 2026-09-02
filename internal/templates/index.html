@@ -968,18 +968,26 @@
     <div id="uploadModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
-                <h3 class="modal-title">Upload Files</h3>
+                <h3 class="modal-title">Upload Files & Folders</h3>
                 <button class="modal-close" onclick="closeUploadModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-                    <p style="font-weight: 500; font-size: 0.875rem;">Drag and drop files here, or click to select</p>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">Max size: {{.MaxUploadSizeStr}}</p>
+                <div class="dropzone" id="dropzone">
+                    <p style="font-weight: 500; font-size: 0.875rem;">Drag and drop files or folders here, or select below</p>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                        <button type="button" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="document.getElementById('fileInput').click()">Select Files</button>
+                        <button type="button" class="btn" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="document.getElementById('folderInput').click()">Select Folder</button>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Max per file: {{.MaxUploadSizeStr}}</p>
                     <input type="file" id="fileInput" name="files" style="display: none;" multiple onchange="handleFileSelect(event)">
+                    <input type="file" id="folderInput" name="files" style="display: none;" webkitdirectory directory multiple onchange="handleFolderSelect(event)">
                 </div>
 
-                <div id="uploadFileInfo" style="display: none; font-size: 0.875rem; background: var(--bg-tertiary); padding: 0.75rem; border: 1px solid var(--border-color); max-height: 150px; overflow-y: auto;">
-                    <div id="uploadFilesHeader" style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">Selected Files:</div>
+                <div id="uploadFileInfo" style="display: none; font-size: 0.875rem; background: var(--bg-tertiary); padding: 0.75rem; border: 1px solid var(--border-color); max-height: 160px; overflow-y: auto;">
+                    <div id="uploadFilesHeader" style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); display: flex; justify-content: space-between;">
+                        <span>Selected Items (<span id="uploadTotalCount">0</span>):</span>
+                        <span id="uploadTotalSize" style="color: var(--text-secondary); font-weight: normal;">0 Bytes</span>
+                    </div>
                     <ul id="uploadFilesList" style="list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.25rem;"></ul>
                 </div>
 
@@ -1283,20 +1291,32 @@
         }
 
         let selectedUploadFiles = [];
+        let uploadCancelled = false;
+        let activeUploadXHRs = [];
 
         function openUploadModal() {
             selectedUploadFiles = [];
+            activeUploadXHRs = [];
+            uploadCancelled = false;
             document.getElementById('fileInput').value = '';
+            document.getElementById('folderInput').value = '';
             document.getElementById('uploadFileInfo').style.display = 'none';
             document.getElementById('uploadSubmitBtn').disabled = true;
             document.getElementById('progressContainer').style.display = 'none';
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressPercent').innerText = '0%';
             document.getElementById('dropzone').style.display = 'flex';
+            document.getElementById('uploadCancelBtn').innerText = 'Cancel';
+            document.getElementById('uploadCancelBtn').disabled = false;
             openModal('uploadModal');
         }
 
         function closeUploadModal() {
+            if (activeUploadXHRs.length > 0) {
+                uploadCancelled = true;
+                activeUploadXHRs.forEach(xhr => xhr.abort());
+                activeUploadXHRs = [];
+            }
             closeModal('uploadModal');
         }
 
@@ -1312,16 +1332,105 @@
         function handleFileSelect(e) {
             const files = e.target.files;
             if (files && files.length > 0) {
-                setupFiles(files);
+                const items = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    items.push({ file: file, relPath: file.name });
+                }
+                setupFiles(items);
             }
         }
 
+        function handleFolderSelect(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const items = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const relPath = file.webkitRelativePath || file.name;
+                    items.push({ file: file, relPath: relPath });
+                }
+                setupFiles(items);
+            }
+        }
+
+        async function traverseEntry(entry, path) {
+            if (entry.isFile) {
+                return new Promise((resolve) => {
+                    entry.file((file) => {
+                        const relPath = path ? path + '/' + file.name : file.name;
+                        resolve([{ file: file, relPath: relPath }]);
+                    }, () => resolve([]));
+                });
+            } else if (entry.isDirectory) {
+                const dirReader = entry.createReader();
+                const dirPath = path ? path + '/' + entry.name : entry.name;
+                
+                const readAllEntries = async () => {
+                    const entries = [];
+                    let batch;
+                    do {
+                        batch = await new Promise((resolve) => {
+                            dirReader.readEntries(results => resolve(results || []), () => resolve([]));
+                        });
+                        if (batch && batch.length > 0) {
+                            entries.push(...batch);
+                        }
+                    } while (batch && batch.length > 0);
+                    return entries;
+                };
+
+                const entries = await readAllEntries();
+                const subResults = await Promise.all(entries.map(e => traverseEntry(e, dirPath)));
+                const combined = [];
+                subResults.forEach(r => {
+                    if (r && r.length > 0) combined.push(...r);
+                });
+                return combined;
+            }
+            return [];
+        }
+
+        async function getFilesFromDataTransfer(dataTransfer) {
+            const files = [];
+            const items = dataTransfer.items;
+            
+            if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+                const queue = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                    if (entry) {
+                        queue.push(traverseEntry(entry, ''));
+                    } else {
+                        const file = item.getAsFile ? item.getAsFile() : null;
+                        if (file) {
+                            files.push({ file: file, relPath: file.name });
+                        }
+                    }
+                }
+                const nestedArrays = await Promise.all(queue);
+                nestedArrays.forEach(arr => {
+                    if (arr && arr.length > 0) files.push(...arr);
+                });
+            } else if (dataTransfer.files && dataTransfer.files.length > 0) {
+                for (let i = 0; i < dataTransfer.files.length; i++) {
+                    const file = dataTransfer.files[i];
+                    const relPath = file.webkitRelativePath || file.name;
+                    files.push({ file: file, relPath: relPath });
+                }
+            }
+            return files;
+        }
+
         function setupFiles(filesList) {
-            selectedUploadFiles = Array.from(filesList);
+            selectedUploadFiles = filesList;
             const listContainer = document.getElementById('uploadFilesList');
             listContainer.innerHTML = '';
             
-            selectedUploadFiles.forEach(file => {
+            let totalBytes = 0;
+            selectedUploadFiles.forEach(item => {
+                totalBytes += item.file.size;
                 const li = document.createElement('li');
                 li.style.display = 'flex';
                 li.style.justifyContent = 'space-between';
@@ -1329,15 +1438,16 @@
                 li.style.padding = '0.25rem 0';
                 
                 const nameSpan = document.createElement('span');
-                nameSpan.innerText = file.name;
+                nameSpan.innerText = item.relPath;
                 nameSpan.style.color = 'var(--text-primary)';
                 nameSpan.style.overflow = 'hidden';
                 nameSpan.style.textOverflow = 'ellipsis';
                 nameSpan.style.whiteSpace = 'nowrap';
                 nameSpan.style.maxWidth = '70%';
+                nameSpan.title = item.relPath;
                 
                 const sizeSpan = document.createElement('span');
-                sizeSpan.innerText = formatBytes(file.size);
+                sizeSpan.innerText = formatBytes(item.file.size);
                 sizeSpan.style.color = 'var(--text-secondary)';
                 
                 li.appendChild(nameSpan);
@@ -1345,6 +1455,8 @@
                 listContainer.appendChild(li);
             });
             
+            document.getElementById('uploadTotalCount').innerText = selectedUploadFiles.length;
+            document.getElementById('uploadTotalSize').innerText = formatBytes(totalBytes);
             document.getElementById('uploadFileInfo').style.display = 'block';
             document.getElementById('uploadSubmitBtn').disabled = selectedUploadFiles.length === 0;
         }
@@ -1359,7 +1471,7 @@
             }, false);
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
+        ['dragleave'].forEach(eventName => {
             dropzone.addEventListener(eventName, e => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1367,69 +1479,152 @@
             }, false);
         });
 
-        dropzone.addEventListener('drop', e => {
+        dropzone.addEventListener('drop', async e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+            
             const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files && files.length > 0) {
-                setupFiles(files);
+            if (dt) {
+                const items = await getFilesFromDataTransfer(dt);
+                if (items && items.length > 0) {
+                    setupFiles(items);
+                }
             }
         }, false);
 
-        function submitUpload() {
+        function resetUploadUI() {
+            document.getElementById('dropzone').style.display = 'flex';
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('uploadSubmitBtn').disabled = false;
+            document.getElementById('uploadCancelBtn').innerText = 'Cancel';
+            document.getElementById('uploadCancelBtn').disabled = false;
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressPercent').innerText = '0%';
+        }
+
+        async function submitUpload() {
             if (selectedUploadFiles.length === 0) return;
 
-            const formData = new FormData();
-            selectedUploadFiles.forEach(file => {
-                formData.append('files', file);
-            });
-            formData.append('path', currentPath);
+            uploadCancelled = false;
+            activeUploadXHRs = [];
 
             document.getElementById('dropzone').style.display = 'none';
             document.getElementById('uploadSubmitBtn').disabled = true;
-            document.getElementById('uploadCancelBtn').disabled = true;
+            document.getElementById('uploadCancelBtn').innerText = 'Cancel Upload';
             document.getElementById('progressContainer').style.display = 'flex';
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'upload', true);
+            const totalFiles = selectedUploadFiles.length;
+            let totalBytes = 0;
+            selectedUploadFiles.forEach(item => {
+                totalBytes += item.file.size;
+            });
 
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
+            const fileLoadedBytes = new Array(totalFiles).fill(0);
+            let completedFiles = 0;
+            let failedFiles = [];
+
+            function updateOverallProgress() {
+                let currentLoaded = fileLoadedBytes.reduce((a, b) => a + b, 0);
+                if (totalBytes === 0) {
+                    const percent = Math.round((completedFiles / totalFiles) * 100);
                     document.getElementById('progressBar').style.width = percent + '%';
                     document.getElementById('progressPercent').innerText = percent + '%';
-                    
-                    const loadedStr = formatBytes(e.loaded);
-                    const totalStr = formatBytes(e.total);
-                    document.getElementById('progressSpeed').innerText = `${loadedStr} of ${totalStr}`;
+                    document.getElementById('progressSpeed').innerText = `${completedFiles} of ${totalFiles} files`;
+                    return;
                 }
-            };
+                const percent = Math.min(100, Math.round((currentLoaded / totalBytes) * 100));
+                document.getElementById('progressBar').style.width = percent + '%';
+                document.getElementById('progressPercent').innerText = percent + '%';
+                document.getElementById('progressSpeed').innerText = `${formatBytes(currentLoaded)} of ${formatBytes(totalBytes)} (${completedFiles}/${totalFiles} files)`;
+            }
 
-            xhr.onload = function() {
-                document.getElementById('uploadCancelBtn').disabled = false;
-                if (xhr.status === 200) {
-                    showToast('Success', 'Files uploaded successfully');
-                    closeUploadModal();
-                    setTimeout(() => {
-                        window.location.href = `?path=${encodeURIComponent(currentPath)}`;
-                    }, 1000);
-                } else {
-                    const errorMsg = xhr.responseText || 'Failed to upload files';
-                    showToast('Error', errorMsg, 'error');
-                    document.getElementById('dropzone').style.display = 'flex';
-                    document.getElementById('progressContainer').style.display = 'none';
-                    document.getElementById('uploadSubmitBtn').disabled = false;
+            const concurrency = Math.min(3, totalFiles);
+            let currentIndex = 0;
+
+            async function uploadWorker() {
+                while (currentIndex < totalFiles && !uploadCancelled) {
+                    const index = currentIndex++;
+                    const item = selectedUploadFiles[index];
+
+                    await new Promise((resolve) => {
+                        const formData = new FormData();
+                        formData.append('files', item.file, item.relPath);
+                        formData.append('relativePath', item.relPath);
+                        formData.append('path', currentPath);
+
+                        const xhr = new XMLHttpRequest();
+                        activeUploadXHRs.push(xhr);
+                        xhr.open('POST', 'upload', true);
+
+                        xhr.upload.onprogress = function(e) {
+                            if (e.lengthComputable) {
+                                fileLoadedBytes[index] = e.loaded;
+                                updateOverallProgress();
+                            }
+                        };
+
+                        xhr.onload = function() {
+                            const xhrIdx = activeUploadXHRs.indexOf(xhr);
+                            if (xhrIdx !== -1) activeUploadXHRs.splice(xhrIdx, 1);
+
+                            if (xhr.status === 200) {
+                                fileLoadedBytes[index] = item.file.size;
+                                completedFiles++;
+                                updateOverallProgress();
+                            } else {
+                                failedFiles.push({ name: item.relPath, error: xhr.responseText || `HTTP ${xhr.status}` });
+                            }
+                            resolve();
+                        };
+
+                        xhr.onerror = function() {
+                            const xhrIdx = activeUploadXHRs.indexOf(xhr);
+                            if (xhrIdx !== -1) activeUploadXHRs.splice(xhrIdx, 1);
+
+                            if (!uploadCancelled) {
+                                failedFiles.push({ name: item.relPath, error: 'Network connection error' });
+                            }
+                            resolve();
+                        };
+
+                        xhr.onabort = function() {
+                            const xhrIdx = activeUploadXHRs.indexOf(xhr);
+                            if (xhrIdx !== -1) activeUploadXHRs.splice(xhrIdx, 1);
+                            resolve();
+                        };
+
+                        xhr.send(formData);
+                    });
                 }
-            };
+            }
 
-            xhr.onerror = function() {
-                document.getElementById('uploadCancelBtn').disabled = false;
-                showToast('Error', 'Network error during upload', 'error');
-                document.getElementById('dropzone').style.display = 'flex';
-                document.getElementById('progressContainer').style.display = 'none';
-                document.getElementById('uploadSubmitBtn').disabled = false;
-            };
+            const workers = [];
+            for (let i = 0; i < concurrency; i++) {
+                workers.push(uploadWorker());
+            }
 
-            xhr.send(formData);
+            await Promise.all(workers);
+
+            if (uploadCancelled) {
+                showToast('Cancelled', 'Upload was cancelled', 'warning');
+                resetUploadUI();
+                return;
+            }
+
+            if (failedFiles.length === 0) {
+                showToast('Success', `${completedFiles} item${completedFiles > 1 ? 's' : ''} uploaded successfully`);
+                closeUploadModal();
+                setTimeout(() => {
+                    window.location.href = `?path=${encodeURIComponent(currentPath)}`;
+                }, 800);
+            } else {
+                const errorSummary = failedFiles.length === 1 
+                    ? `${failedFiles[0].name}: ${failedFiles[0].error}`
+                    : `${failedFiles.length} files failed to upload`;
+                showToast('Upload Partial Error', errorSummary, 'error');
+                resetUploadUI();
+            }
         }
 
         window.onclick = function(event) {

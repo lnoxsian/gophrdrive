@@ -3,14 +3,16 @@ package handlers
 import (
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/lnoxsian/gophrdrv/internal/filesystem"
 )
 
-// UploadHandler handles file upload POST requests
+// UploadHandler handles file and folder upload POST requests
 func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -57,7 +59,7 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Pre-allocate 128KB copy buffer to reduce system calls during file writes
 	uploadBuf := make([]byte, 128*1024)
 
-	for _, fileHeader := range files {
+	for i, fileHeader := range files {
 		multipartFile, err := fileHeader.Open()
 		if err != nil {
 			h.LogError("Failed to open file in multipart form: %v", err)
@@ -65,19 +67,50 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Validate filename
-		fileName := filepath.Base(fileHeader.Filename)
-		if !filesystem.IsValidFilename(fileName) {
+		// Normalize raw relative path from Content-Disposition header, form fields, or filename
+		rawRelPath := fileHeader.Filename
+		if cd := fileHeader.Header.Get("Content-Disposition"); cd != "" {
+			if _, params, err := mime.ParseMediaType(cd); err == nil {
+				if f, ok := params["filename"]; ok && f != "" {
+					rawRelPath = f
+				}
+			}
+		}
+		rawRelPath = filepath.ToSlash(rawRelPath)
+		if len(r.MultipartForm.Value["paths"]) == len(files) {
+			if p := r.MultipartForm.Value["paths"][i]; p != "" {
+				rawRelPath = filepath.ToSlash(p)
+			}
+		} else if p := r.FormValue("relativePath"); p != "" && len(files) == 1 {
+			rawRelPath = filepath.ToSlash(p)
+		}
+
+		cleanRelPath := filepath.Clean(rawRelPath)
+		cleanRelPath = strings.TrimPrefix(cleanRelPath, "/")
+
+		if cleanRelPath == "" || cleanRelPath == "." || cleanRelPath == ".." || strings.HasPrefix(cleanRelPath, "../") {
 			multipartFile.Close()
-			http.Error(w, "Invalid filename: contains forbidden characters", http.StatusBadRequest)
+			http.Error(w, "Invalid filename or path: unsafe path", http.StatusBadRequest)
 			return
 		}
 
-		// Form target file path
-		targetFilePath := filepath.Join(safeParent, fileName)
+		// Validate all path segments in the relative path
+		if !filesystem.IsValidRelPath(cleanRelPath) {
+			multipartFile.Close()
+			http.Error(w, "Invalid filename or path: contains forbidden characters", http.StatusBadRequest)
+			return
+		}
 
-		// Additional path safety check on final filename path
-		_, err = filesystem.ResolveSafePath(h.Cfg.Root, filepath.Join(parentPath, fileName))
+		// Form target file path inside safeParent
+		targetFilePath, err := filesystem.ResolveSafePath(safeParent, cleanRelPath)
+		if err != nil {
+			multipartFile.Close()
+			http.Error(w, "Forbidden: Invalid file path target", http.StatusForbidden)
+			return
+		}
+
+		// Additional path safety check against root
+		_, err = filesystem.ResolveSafePath(h.Cfg.Root, filepath.Join(parentPath, cleanRelPath))
 		if err != nil {
 			multipartFile.Close()
 			http.Error(w, "Forbidden: Invalid file path target", http.StatusForbidden)
@@ -89,6 +122,15 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		if err == nil && info.IsDir() {
 			multipartFile.Close()
 			http.Error(w, "Conflict: A folder with this name already exists", http.StatusConflict)
+			return
+		}
+
+		// Ensure parent directory exists for nested folder uploads
+		targetDir := filepath.Dir(targetFilePath)
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			multipartFile.Close()
+			h.LogError("Failed to create parent directory %s: %v", targetDir, err)
+			http.Error(w, "Internal Server Error: failed to create directories", http.StatusInternalServerError)
 			return
 		}
 
@@ -111,7 +153,7 @@ func (h *HandlerContext) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.LogInfo("uploaded %s", filepath.Join(parentPath, fileName))
+		h.LogInfo("uploaded %s", filepath.Join(parentPath, cleanRelPath))
 	}
 
 	w.WriteHeader(http.StatusOK)

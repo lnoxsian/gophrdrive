@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -225,6 +226,58 @@ func TestUploadHandler(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(tmpDir, "upload2.txt")); err != nil {
 		t.Errorf("expected upload2.txt to exist: %v", err)
+	}
+
+	// 4. Success case: folder upload with nested directories
+	body = &bytes.Buffer{}
+	writer = multipart.NewWriter(body)
+	_ = writer.WriteField("path", "")
+
+	h1 := make(textproto.MIMEHeader)
+	h1.Set("Content-Disposition", `form-data; name="files"; filename="my-project/src/index.js"`)
+	partFolder1, _ := writer.CreatePart(h1)
+	_, _ = partFolder1.Write([]byte("console.log('hello');"))
+
+	h2 := make(textproto.MIMEHeader)
+	h2.Set("Content-Disposition", `form-data; name="files"; filename="my-project/assets/logo.png"`)
+	partFolder2, _ := writer.CreatePart(h2)
+	_, _ = partFolder2.Write([]byte("fake logo data"))
+
+	_ = writer.Close()
+
+	req = httptest.NewRequest(http.MethodPost, "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w = httptest.NewRecorder()
+	ctx.UploadHandler(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Errorf("expected status OK for folder upload, got %v", w.Result().StatusCode)
+	}
+
+	// Verify folder files exist
+	if _, err := os.Stat(filepath.Join(tmpDir, "my-project", "src", "index.js")); err != nil {
+		t.Errorf("expected nested index.js to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "my-project", "assets", "logo.png")); err != nil {
+		t.Errorf("expected nested logo.png to exist: %v", err)
+	}
+
+	// 5. Error case: relative path traversal attempt in filename
+	body = &bytes.Buffer{}
+	writer = multipart.NewWriter(body)
+	_ = writer.WriteField("path", "")
+
+	hTrav := make(textproto.MIMEHeader)
+	hTrav.Set("Content-Disposition", `form-data; name="files"; filename="sub/../../evil.txt"`)
+	partTraversal, _ := writer.CreatePart(hTrav)
+	_, _ = partTraversal.Write([]byte("malicious"))
+	_ = writer.Close()
+
+	req = httptest.NewRequest(http.MethodPost, "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w = httptest.NewRecorder()
+	ctx.UploadHandler(w, req)
+	if w.Result().StatusCode != http.StatusBadRequest && w.Result().StatusCode != http.StatusForbidden {
+		t.Errorf("expected error status for traversal in filename, got %v", w.Result().StatusCode)
 	}
 }
 
