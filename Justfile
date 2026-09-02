@@ -8,6 +8,19 @@ default:
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv ./cmd/gophrdrv
 
+# Build for Linux ARM64
+build-arm64:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-linux-arm64 ./cmd/gophrdrv
+
+# Cross-compile for major operating systems and architectures
+build-all:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-linux-amd64 ./cmd/gophrdrv
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-linux-arm64 ./cmd/gophrdrv
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-darwin-arm64 ./cmd/gophrdrv
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-darwin-amd64 ./cmd/gophrdrv
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-windows-amd64.exe ./cmd/gophrdrv
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ./bin/gophrdrv-windows-arm64.exe ./cmd/gophrdrv
+
 # Run all unit tests
 test:
     go test -v -cover ./...
