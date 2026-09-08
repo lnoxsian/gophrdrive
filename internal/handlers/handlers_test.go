@@ -546,6 +546,64 @@ func TestDeleteHandler(t *testing.T) {
 	if w.Result().StatusCode != http.StatusForbidden {
 		t.Errorf("expected status Forbidden, got %v", w.Result().StatusCode)
 	}
+
+	// 3. Multi-delete success case
+	file1 := filepath.Join(tmpDir, "multi1.txt")
+	file2 := filepath.Join(tmpDir, "multi2.txt")
+	subFolder := filepath.Join(tmpDir, "subfolder")
+	subFile := filepath.Join(subFolder, "nested.txt")
+	if err := os.WriteFile(file1, []byte("m1"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file2, []byte("m2"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(subFolder, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(subFile, []byte("nested"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	multiForm := url.Values{}
+	multiForm.Add("paths", "multi1.txt")
+	multiForm.Add("paths", "multi2.txt")
+	multiForm.Add("paths", "subfolder")
+	req = httptest.NewRequest(http.MethodPost, "/delete", strings.NewReader(multiForm.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ctx.DeleteHandler(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Errorf("expected status OK for multi-delete, got %v", w.Result().StatusCode)
+	}
+	if _, err := os.Stat(file1); !os.IsNotExist(err) {
+		t.Errorf("expected multi1.txt to be deleted")
+	}
+	if _, err := os.Stat(file2); !os.IsNotExist(err) {
+		t.Errorf("expected multi2.txt to be deleted")
+	}
+	if _, err := os.Stat(subFolder); !os.IsNotExist(err) {
+		t.Errorf("expected subfolder to be deleted")
+	}
+
+	// 4. Multi-delete with invalid/unsafe path rejected without deleting valid targets
+	keepFile := filepath.Join(tmpDir, "keep.txt")
+	if err := os.WriteFile(keepFile, []byte("keep"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	invalidMultiForm := url.Values{}
+	invalidMultiForm.Add("paths", "keep.txt")
+	invalidMultiForm.Add("paths", "../outside.txt")
+	req = httptest.NewRequest(http.MethodPost, "/delete", strings.NewReader(invalidMultiForm.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ctx.DeleteHandler(w, req)
+	if w.Result().StatusCode != http.StatusForbidden {
+		t.Errorf("expected status Forbidden for path traversal, got %v", w.Result().StatusCode)
+	}
+	if _, err := os.Stat(keepFile); os.IsNotExist(err) {
+		t.Errorf("keep.txt should not have been deleted when batch contains invalid path")
+	}
 }
 
 func TestEditHandler(t *testing.T) {

@@ -621,8 +621,10 @@
                 gap: 0.5rem;
                 width: 100%;
             }
-            #downloadZipBtn {
-                grid-column: span 2;
+            #downloadZipBtn, #deleteSelectedBtn {
+                grid-column: span 1;
+                justify-content: center;
+                text-align: center;
             }
             .search-container {
                 max-width: none;
@@ -753,20 +755,23 @@
         <div class="header-spacer" style="flex-grow: 1;"></div>
         
         <div class="tool-group">
-            <button class="btn btn-primary" onclick="openUploadModal()">
+            <button class="btn btn-primary" id="uploadBtn" onclick="openUploadModal()">
                 Upload
             </button>
-            <button class="btn" onclick="openNewFolderModal()">
+            <button class="btn" id="newFolderBtn" onclick="openNewFolderModal()">
                 New Folder
             </button>
-            <button class="btn" onclick="openNewFileModal()">
+            <button class="btn" id="newFileBtn" onclick="openNewFileModal()">
                 New File
             </button>
-            <button class="btn" onclick="window.location.reload()">
+            <button class="btn" id="refreshBtn" onclick="window.location.reload()">
                 Refresh
             </button>
             <button class="btn btn-primary" id="downloadZipBtn" onclick="downloadSelectedZip()" style="display: none;">
                 Download Selected
+            </button>
+            <button class="btn btn-danger" id="deleteSelectedBtn" onclick="openDeleteSelectedModal()" style="display: none;">
+                Delete Selected
             </button>
         </div>
         <form class="search-container" action="" method="GET">
@@ -1252,7 +1257,10 @@
             }
         }
 
+        let deleteTargetPaths = [];
+
         function openDeleteModal(path, name, isDir) {
+            deleteTargetPaths = [path];
             document.getElementById('deletePath').value = path;
             const itemType = isDir ? 'directory' : 'file';
             document.getElementById('deleteModalTitle').innerText = `Delete ${isDir ? 'Folder' : 'File'}`;
@@ -1260,30 +1268,60 @@
             openModal('deleteModal');
         }
 
+        function openDeleteSelectedModal() {
+            const checkboxes = document.querySelectorAll('.file-select-checkbox');
+            deleteTargetPaths = [];
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (cb.checked && row && row.style.display !== 'none') {
+                    deleteTargetPaths.push(cb.getAttribute('data-path'));
+                }
+            });
+
+            if (deleteTargetPaths.length === 0) return;
+
+            const count = deleteTargetPaths.length;
+            document.getElementById('deletePath').value = '';
+            document.getElementById('deleteModalTitle').innerText = 'Delete Selected Items';
+            document.getElementById('deleteMessage').innerHTML = `Are you sure you want to delete <strong style="color: var(--text-primary);">${count} selected item${count > 1 ? 's' : ''}</strong>? This action cannot be undone.`;
+            openModal('deleteModal');
+        }
+
         function closeDeleteModal() {
+            deleteTargetPaths = [];
             closeModal('deleteModal');
         }
 
         async function submitDelete() {
-            const path = document.getElementById('deletePath').value;
+            if (deleteTargetPaths.length === 0) {
+                const fallbackPath = document.getElementById('deletePath').value;
+                if (fallbackPath) {
+                    deleteTargetPaths = [fallbackPath];
+                } else {
+                    return;
+                }
+            }
+
             try {
+                const params = new URLSearchParams();
+                deleteTargetPaths.forEach(p => params.append('paths', p));
+
                 const response = await fetch('delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        path: path
-                    })
+                    body: params
                 });
 
                 if (response.ok) {
-                    showToast('Success', 'Item deleted successfully');
+                    const count = deleteTargetPaths.length;
+                    showToast('Success', count > 1 ? `${count} items deleted successfully` : 'Item deleted successfully');
                     closeDeleteModal();
                     setTimeout(() => {
                         window.location.href = `?path=${encodeURIComponent(currentPath)}`;
                     }, 1000);
                 } else {
                     const errorMsg = await response.text();
-                    showToast('Error', errorMsg || 'Failed to delete item', 'error');
+                    showToast('Error', errorMsg || 'Failed to delete item(s)', 'error');
                 }
             } catch (err) {
                 showToast('Network Error', err.message || 'An unexpected error occurred', 'error');
@@ -1678,14 +1716,33 @@
                 }
             });
 
-            const btn = document.getElementById('downloadZipBtn');
-            if (btn) {
-                if (selectedCount > 0) {
-                    btn.textContent = `Download Selected (${selectedCount})`;
-                    btn.style.display = 'inline-flex';
-                } else {
-                    btn.style.display = 'none';
+            const downloadBtn = document.getElementById('downloadZipBtn');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const newFolderBtn = document.getElementById('newFolderBtn');
+            const newFileBtn = document.getElementById('newFileBtn');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            if (selectedCount > 0) {
+                if (downloadBtn) {
+                    downloadBtn.textContent = `Download Selected (${selectedCount})`;
+                    downloadBtn.style.display = 'inline-flex';
                 }
+                if (deleteBtn) {
+                    deleteBtn.textContent = `Delete Selected (${selectedCount})`;
+                    deleteBtn.style.display = 'inline-flex';
+                }
+                if (uploadBtn) uploadBtn.style.display = 'none';
+                if (newFolderBtn) newFolderBtn.style.display = 'none';
+                if (newFileBtn) newFileBtn.style.display = 'none';
+                if (refreshBtn) refreshBtn.style.display = 'none';
+            } else {
+                if (downloadBtn) downloadBtn.style.display = 'none';
+                if (deleteBtn) deleteBtn.style.display = 'none';
+                if (uploadBtn) uploadBtn.style.display = '';
+                if (newFolderBtn) newFolderBtn.style.display = '';
+                if (newFileBtn) newFileBtn.style.display = '';
+                if (refreshBtn) refreshBtn.style.display = '';
             }
 
             const master = document.getElementById('selectAllCheckbox');

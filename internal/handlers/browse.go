@@ -252,38 +252,76 @@ func (h *HandlerContext) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	itemPath := r.FormValue("path")
-	if itemPath == "" || itemPath == "." || itemPath == "/" {
+	var rawList []string
+	if rawPaths, ok := r.Form["paths"]; ok && len(rawPaths) > 0 {
+		rawList = append(rawList, rawPaths...)
+	}
+	if rawPath, ok := r.Form["path"]; ok && len(rawPath) > 0 {
+		rawList = append(rawList, rawPath...)
+	}
+	if rawFiles, ok := r.Form["files"]; ok && len(rawFiles) > 0 {
+		rawList = append(rawList, rawFiles...)
+	}
+
+	if len(rawList) == 0 {
 		http.Error(w, "Cannot delete root or empty path", http.StatusForbidden)
 		return
 	}
 
-	// Resolve safe path
-	safeItemPath, err := filesystem.ResolveSafePath(h.Cfg.Root, itemPath)
-	if err != nil {
-		if errors.Is(err, filesystem.ErrUnsafePath) {
-			http.Error(w, "Forbidden: Path traversal detected", http.StatusForbidden)
-		} else {
-			http.Error(w, "Bad Request: invalid path", http.StatusBadRequest)
+	// De-duplicate paths while preserving order
+	var paths []string
+	seen := make(map[string]bool)
+	for _, p := range rawList {
+		if !seen[p] {
+			seen[p] = true
+			paths = append(paths, p)
 		}
-		return
 	}
 
-	// Double check that we aren't trying to delete root
-	if safeItemPath == filepath.Clean(h.Cfg.Root) {
-		http.Error(w, "Cannot delete root directory", http.StatusForbidden)
-		return
+	type deleteTarget struct {
+		relPath  string
+		safePath string
+	}
+	var targets []deleteTarget
+
+	for _, itemPath := range paths {
+		if itemPath == "" || itemPath == "." || itemPath == "/" {
+			http.Error(w, "Cannot delete root or empty path", http.StatusForbidden)
+			return
+		}
+
+		// Resolve safe path
+		safeItemPath, err := filesystem.ResolveSafePath(h.Cfg.Root, itemPath)
+		if err != nil {
+			if errors.Is(err, filesystem.ErrUnsafePath) {
+				http.Error(w, "Forbidden: Path traversal detected", http.StatusForbidden)
+			} else {
+				http.Error(w, "Bad Request: invalid path", http.StatusBadRequest)
+			}
+			return
+		}
+
+		// Double check that we aren't trying to delete root
+		if safeItemPath == filepath.Clean(h.Cfg.Root) {
+			http.Error(w, "Cannot delete root directory", http.StatusForbidden)
+			return
+		}
+
+		targets = append(targets, deleteTarget{relPath: itemPath, safePath: safeItemPath})
 	}
 
-	// Delete file or directory recursively
-	err = os.RemoveAll(safeItemPath)
-	if err != nil {
-		h.LogError("Failed to delete %s: %v", safeItemPath, err)
-		http.Error(w, "Internal Server Error: failed to delete item", http.StatusInternalServerError)
-		return
+	for _, t := range targets {
+		// Delete file or directory recursively
+		err = os.RemoveAll(t.safePath)
+		if err != nil {
+			h.LogError("Failed to delete %s: %v", t.safePath, err)
+			http.Error(w, "Internal Server Error: failed to delete item", http.StatusInternalServerError)
+			return
+		}
+
+		h.LogInfo("deleted %s", t.relPath)
 	}
 
-	h.LogInfo("deleted %s", itemPath)
 	w.WriteHeader(http.StatusOK)
 }
 
